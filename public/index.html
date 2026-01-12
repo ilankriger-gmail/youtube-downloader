@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="container login-container">
+        <header>
+            <h1>YouTube Downloader</h1>
+            <p class="subtitle">Digite a senha para acessar</p>
+        </header>
+        <div class="login-form">
+            <input type="password" id="passwordInput" placeholder="Senha" class="login-input" autofocus>
+            <button id="loginBtn" class="btn btn-success login-btn">Entrar</button>
+            <p id="loginError" class="login-error hidden">Senha incorreta</p>
+        </div>
+    </div>
+
+    <!-- Main App (hidden until login) -->
+    <div id="appScreen" class="container hidden">
+        <header>
+            <h1>YouTube Downloader</h1>
+            <p class="subtitle">Cole seus links do YouTube abaixo</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <textarea
+                    id="urlInput"
+                    placeholder="Cole os links do YouTube aqui, um por linha...&#10;&#10;Exemplo:&#10;https://www.youtube.com/watch?v=xxxxx&#10;https://youtu.be/xxxxx"
+                    rows="6"
+                ></textarea>
+                <div class="quality-section">
+                    <label for="qualitySelect">Qualidade:</label>
+                    <select id="qualitySelect" class="quality-select">
+                        <option value="best" selected>Melhor Disponivel</option>
+                        <option value="1080">1080p Full HD</option>
+                        <option value="720">720p HD</option>
+                        <option value="480">480p SD</option>
+                        <option value="360">360p Baixa</option>
+                        <option value="audio">Apenas Audio (MP3)</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button id="validateBtn" class="btn btn-primary">
+                        <span class="btn-icon">&#128269;</span>
+                        Verificar Links
+                    </button>
+                </div>
+            </div>
+
+            <div id="statusMessage" class="status-message hidden"></div>
+
+            <div id="videoList" class="video-list"></div>
+        </main>
+
+        <footer>
+            <p>Desenvolvido com yt-dlp</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
