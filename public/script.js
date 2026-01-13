@@ -6,6 +6,9 @@ const openFolderBtn = document.getElementById('openFolderBtn');
 const qualitySelect = document.getElementById('qualitySelect');
 const statusMessage = document.getElementById('statusMessage');
 const videoList = document.getElementById('videoList');
+const overallProgress = document.getElementById('overallProgress');
+const overallProgressBar = document.getElementById('overallProgressBar');
+const overallProgressText = document.getElementById('overallProgressText');
 
 // State
 let validatedVideos = [];
@@ -133,104 +136,141 @@ function selectPrefix(index, prefix) {
     }
 }
 
-// Download individual video
-function downloadVideo(index) {
-    const video = validatedVideos[index];
-    if (!video || !video.valid) return;
-
-    const quality = qualitySelect.value;
-    const prefix = videoPrefixes[index] || '';
-
-    // Build download URL with views
-    const params = new URLSearchParams({
-        url: video.url,
-        quality: quality,
-        prefix: prefix,
-        title: video.title,
-        views: video.views || 0
-    });
-
-    // Update button to show downloading state
-    const item = document.getElementById(`video-${index}`);
-    const btn = item.querySelector('.btn-download');
-    btn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
-    btn.disabled = true;
-
-    // Trigger download
-    const downloadUrl = `/api/download-file?${params.toString()}`;
-
-    fetch(downloadUrl)
-        .then(response => {
-            if (!response.ok) throw new Error('Download failed');
-            return response.blob();
-        })
-        .then(blob => {
-            // Create download link
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const ext = quality === 'audio' ? 'mp3' : 'mp4';
-            const viewsFormatted = formatViews(video.views);
-            let filename;
-            if (prefix) {
-                filename = `${prefix} - ${viewsFormatted} - ${video.title}.${ext}`;
-            } else {
-                filename = `${viewsFormatted} - ${video.title}.${ext}`;
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-
-            // Update button
-            btn.innerHTML = '<span class="btn-icon">&#10003;</span> Concluido';
-            btn.classList.add('btn-completed');
-
-            setTimeout(() => {
-                btn.innerHTML = '<span class="btn-icon">&#11015;</span> Baixar';
-                btn.disabled = false;
-                btn.classList.remove('btn-completed');
-            }, 3000);
-        })
-        .catch(error => {
-            console.error('Download error:', error);
-            btn.innerHTML = '<span class="btn-icon">&#10007;</span> Erro';
-            btn.classList.add('btn-error');
-
-            setTimeout(() => {
-                btn.innerHTML = '<span class="btn-icon">&#11015;</span> Baixar';
-                btn.disabled = false;
-                btn.classList.remove('btn-error');
-            }, 3000);
-        });
+// Update overall progress bar
+function updateOverallProgress(completed, total) {
+    overallProgressText.textContent = `${completed}/${total}`;
+    const percent = total > 0 ? (completed / total) * 100 : 0;
+    overallProgressBar.style.width = `${percent}%`;
 }
 
-// Download all videos
-async function downloadAllVideos() {
-    const validVideos = validatedVideos.filter(v => v.valid);
+// Download individual video (returns promise)
+function downloadVideo(index, showButtonState = true) {
+    return new Promise((resolve, reject) => {
+        const video = validatedVideos[index];
+        if (!video || !video.valid) {
+            resolve(false);
+            return;
+        }
 
-    if (validVideos.length === 0) {
+        const quality = qualitySelect.value;
+        const prefix = videoPrefixes[index] || '';
+
+        // Build download URL with views
+        const params = new URLSearchParams({
+            url: video.url,
+            quality: quality,
+            prefix: prefix,
+            title: video.title,
+            views: video.views || 0
+        });
+
+        // Update button to show downloading state
+        const item = document.getElementById(`video-${index}`);
+        const btn = item.querySelector('.btn-download');
+
+        if (showButtonState) {
+            btn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
+            btn.disabled = true;
+        }
+
+        // Trigger download
+        const downloadUrl = `/api/download-file?${params.toString()}`;
+
+        fetch(downloadUrl)
+            .then(response => {
+                if (!response.ok) throw new Error('Download failed');
+                return response.blob();
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const ext = quality === 'audio' ? 'mp3' : 'mp4';
+                const viewsFormatted = formatViews(video.views);
+                let filename;
+                if (prefix) {
+                    filename = `${prefix} - ${viewsFormatted} - ${video.title}.${ext}`;
+                } else {
+                    filename = `${viewsFormatted} - ${video.title}.${ext}`;
+                }
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+                // Update button
+                btn.innerHTML = '<span class="btn-icon">&#10003;</span> Concluido';
+                btn.classList.add('btn-completed');
+                btn.disabled = false;
+
+                resolve(true);
+            })
+            .catch(error => {
+                console.error('Download error:', error);
+                btn.innerHTML = '<span class="btn-icon">&#10007;</span> Erro';
+                btn.classList.add('btn-error');
+                btn.disabled = false;
+
+                resolve(false);
+            });
+    });
+}
+
+// Download all videos sequentially
+async function downloadAllVideos() {
+    const validIndices = [];
+    validatedVideos.forEach((video, index) => {
+        if (video.valid) {
+            validIndices.push(index);
+        }
+    });
+
+    if (validIndices.length === 0) {
         showStatus('Nenhum video valido para download', 'error');
         return;
     }
 
+    // Disable controls
     downloadAllBtn.disabled = true;
     downloadAllBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
+    validateBtn.disabled = true;
+    urlInput.disabled = true;
+    qualitySelect.disabled = true;
 
-    showStatus(`Iniciando download de ${validVideos.length} videos...`, 'info');
+    // Show progress bar
+    overallProgress.classList.remove('hidden');
+    updateOverallProgress(0, validIndices.length);
 
-    // Download each video
-    for (let i = 0; i < validatedVideos.length; i++) {
-        if (validatedVideos[i].valid) {
-            downloadVideo(i);
-            // Small delay between downloads to avoid overwhelming
-            await new Promise(resolve => setTimeout(resolve, 500));
+    let completedCount = 0;
+
+    // Download each video sequentially (wait for each to finish)
+    for (let i = 0; i < validIndices.length; i++) {
+        const index = validIndices[i];
+
+        showStatus(`Baixando video ${i + 1} de ${validIndices.length}...`, 'info');
+
+        // Wait for this download to complete before starting next
+        const success = await downloadVideo(index, true);
+
+        completedCount++;
+        updateOverallProgress(completedCount, validIndices.length);
+
+        // Small delay between downloads
+        if (i < validIndices.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
 
+    // Re-enable controls
     downloadAllBtn.disabled = false;
     downloadAllBtn.innerHTML = '<span class="btn-icon">&#11015;</span> Baixar Todos';
+    validateBtn.disabled = false;
+    urlInput.disabled = false;
+    qualitySelect.disabled = false;
+
+    showStatus(`${completedCount} download(s) concluido(s)!`, 'success');
 }
 
 // Validate URLs
