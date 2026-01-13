@@ -12,9 +12,6 @@ const DOWNLOADS_DIR = process.env.RAILWAY_ENVIRONMENT
     ? path.join(os.tmpdir(), 'ytdl-downloads')
     : path.join(__dirname, 'downloads');
 
-// Password from environment variable
-const PASSWORD = process.env.PASSWORD || 'admin123';
-
 // Download sessions storage
 const downloadSessions = {};
 
@@ -35,35 +32,8 @@ if (!fs.existsSync(DOWNLOADS_DIR)) {
 
 app.use(express.json());
 
-// Authentication middleware
-const authMiddleware = (req, res, next) => {
-    // Skip auth for login endpoint and static files
-    if (req.path === '/api/login' || req.path === '/' || req.path.startsWith('/style') || req.path.startsWith('/script')) {
-        return next();
-    }
-
-    const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${PASSWORD}`) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
-};
-
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Apply auth middleware to API routes
-app.use('/api', authMiddleware);
-
-// Login endpoint
-app.post('/api/login', (req, res) => {
-    const { password } = req.body;
-    if (password === PASSWORD) {
-        res.json({ success: true, token: PASSWORD });
-    } else {
-        res.status(401).json({ error: 'Senha incorreta' });
-    }
-});
 
 // Validate YouTube URL
 function isValidYouTubeUrl(url) {
@@ -107,7 +77,8 @@ async function getVideoInfo(url) {
                         title: info.title || 'Unknown Title',
                         duration: info.duration || 0,
                         thumbnail: info.thumbnail || '',
-                        channel: info.channel || info.uploader || 'Unknown Channel'
+                        channel: info.channel || info.uploader || 'Unknown Channel',
+                        views: info.view_count || 0
                     });
                 } catch (e) {
                     reject(new Error('Failed to parse video info'));
@@ -169,9 +140,19 @@ app.post('/api/validate', async (req, res) => {
     res.json({ videos: results });
 });
 
+// Format views number
+function formatViews(views) {
+    if (views >= 1000000) {
+        return (views / 1000000).toFixed(1) + 'M';
+    } else if (views >= 1000) {
+        return (views / 1000).toFixed(1) + 'K';
+    }
+    return views.toString();
+}
+
 // Direct download endpoint - downloads video and streams to browser
 app.get('/api/download-file', async (req, res) => {
-    const { url, quality, prefix, title } = req.query;
+    const { url, quality, prefix, title, views } = req.query;
 
     if (!url) {
         return res.status(400).json({ error: 'URL is required' });
@@ -180,10 +161,21 @@ app.get('/api/download-file', async (req, res) => {
     const format = QUALITY_FORMATS[quality] || QUALITY_FORMATS['best'];
     const isAudioOnly = quality === 'audio';
 
-    // Create filename
+    // Create filename with views
     const safeTitle = sanitizeFilename(title || 'video');
+    const viewsFormatted = views ? formatViews(parseInt(views)) : '';
     const ext = isAudioOnly ? 'mp3' : 'mp4';
-    const filename = prefix ? `${prefix} - ${safeTitle}.${ext}` : `${safeTitle}.${ext}`;
+
+    let filename;
+    if (prefix && viewsFormatted) {
+        filename = `${prefix} - ${viewsFormatted} - ${safeTitle}.${ext}`;
+    } else if (prefix) {
+        filename = `${prefix} - ${safeTitle}.${ext}`;
+    } else if (viewsFormatted) {
+        filename = `${viewsFormatted} - ${safeTitle}.${ext}`;
+    } else {
+        filename = `${safeTitle}.${ext}`;
+    }
 
     // Temporary file path
     const tempFile = path.join(DOWNLOADS_DIR, `temp_${Date.now()}_${Math.random().toString(36).substr(2)}.${ext}`);

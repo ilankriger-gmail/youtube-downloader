@@ -1,101 +1,42 @@
-// DOM Elements - Login
-const loginScreen = document.getElementById('loginScreen');
-const appScreen = document.getElementById('appScreen');
-const passwordInput = document.getElementById('passwordInput');
-const loginBtn = document.getElementById('loginBtn');
-const loginError = document.getElementById('loginError');
-
-// DOM Elements - App
+// DOM Elements
 const urlInput = document.getElementById('urlInput');
 const validateBtn = document.getElementById('validateBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const openFolderBtn = document.getElementById('openFolderBtn');
 const qualitySelect = document.getElementById('qualitySelect');
 const statusMessage = document.getElementById('statusMessage');
 const videoList = document.getElementById('videoList');
 
 // State
-let authToken = localStorage.getItem('authToken') || '';
 let validatedVideos = [];
 let videoPrefixes = {};
 
-// Check if already logged in
-if (authToken) {
-    checkAuth();
-} else {
-    loginScreen.classList.remove('hidden');
-}
+// Initialize
+checkDependencies();
 
-// Login functions
-async function login() {
-    const password = passwordInput.value;
-    if (!password) return;
-
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'Entrando...';
-    loginError.classList.add('hidden');
-
+// Check if dependencies are installed
+async function checkDependencies() {
     try {
-        const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
-        });
+        const [ytdlpRes, ffmpegRes] = await Promise.all([
+            fetch('/api/check-ytdlp'),
+            fetch('/api/check-ffmpeg')
+        ]);
 
-        const data = await response.json();
+        const ytdlp = await ytdlpRes.json();
+        const ffmpeg = await ffmpegRes.json();
 
-        if (data.success) {
-            authToken = data.token;
-            localStorage.setItem('authToken', authToken);
-            showApp();
-        } else {
-            loginError.classList.remove('hidden');
-            passwordInput.value = '';
-            passwordInput.focus();
+        if (!ytdlp.installed) {
+            showStatus('yt-dlp nao esta instalado. Execute: brew install yt-dlp', 'error');
+            return;
+        }
+
+        if (!ffmpeg.installed) {
+            showStatus('ffmpeg nao esta instalado. Execute: brew install ffmpeg', 'error');
+            return;
         }
     } catch (error) {
-        loginError.textContent = 'Erro de conexao';
-        loginError.classList.remove('hidden');
-    } finally {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Entrar';
+        console.error('Error checking dependencies:', error);
     }
-}
-
-async function checkAuth() {
-    try {
-        const response = await fetch('/api/check-ytdlp', {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-
-        if (response.ok) {
-            showApp();
-        } else {
-            localStorage.removeItem('authToken');
-            authToken = '';
-            loginScreen.classList.remove('hidden');
-        }
-    } catch (error) {
-        loginScreen.classList.remove('hidden');
-    }
-}
-
-function showApp() {
-    loginScreen.classList.add('hidden');
-    appScreen.classList.remove('hidden');
-}
-
-// Event listeners for login
-loginBtn.addEventListener('click', login);
-passwordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') login();
-});
-
-// Helper function for authenticated requests
-async function authFetch(url, options = {}) {
-    const headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${authToken}`
-    };
-    return fetch(url, { ...options, headers });
 }
 
 // Show status message
@@ -124,6 +65,17 @@ function formatDuration(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// Format views
+function formatViews(views) {
+    if (!views) return '0';
+    if (views >= 1000000) {
+        return (views / 1000000).toFixed(1) + 'M';
+    } else if (views >= 1000) {
+        return (views / 1000).toFixed(1) + 'K';
+    }
+    return views.toString();
+}
+
 // Create video item HTML
 function createVideoItem(video, index) {
     const item = document.createElement('div');
@@ -139,11 +91,13 @@ function createVideoItem(video, index) {
             <span class="video-status status-invalid">Invalido</span>
         `;
     } else {
+        const viewsFormatted = formatViews(video.views);
         item.innerHTML = `
             <img class="video-thumbnail" src="${video.thumbnail || ''}" alt="" onerror="this.style.display='none'">
             <div class="video-info">
                 <div class="video-title" title="${video.title}">${video.title}</div>
                 <div class="video-channel">${video.channel} ${video.duration ? '- ' + formatDuration(video.duration) : ''}</div>
+                <div class="video-views">${viewsFormatted} views</div>
                 <div class="prefix-buttons" data-index="${index}">
                     <button class="prefix-btn prefix-viral" onclick="selectPrefix(${index}, 'Viral')">Viral</button>
                     <button class="prefix-btn prefix-normal selected" onclick="selectPrefix(${index}, 'Normal')">Normal</button>
@@ -187,12 +141,13 @@ function downloadVideo(index) {
     const quality = qualitySelect.value;
     const prefix = videoPrefixes[index] || '';
 
-    // Build download URL
+    // Build download URL with views
     const params = new URLSearchParams({
         url: video.url,
         quality: quality,
         prefix: prefix,
-        title: video.title
+        title: video.title,
+        views: video.views || 0
     });
 
     // Update button to show downloading state
@@ -201,11 +156,10 @@ function downloadVideo(index) {
     btn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
     btn.disabled = true;
 
-    // Create hidden link and trigger download
+    // Trigger download
     const downloadUrl = `/api/download-file?${params.toString()}`;
 
-    // Use fetch to download with auth
-    authFetch(downloadUrl)
+    fetch(downloadUrl)
         .then(response => {
             if (!response.ok) throw new Error('Download failed');
             return response.blob();
@@ -216,7 +170,14 @@ function downloadVideo(index) {
             const a = document.createElement('a');
             a.href = url;
             const ext = quality === 'audio' ? 'mp3' : 'mp4';
-            a.download = prefix ? `${prefix} - ${video.title}.${ext}` : `${video.title}.${ext}`;
+            const viewsFormatted = formatViews(video.views);
+            let filename;
+            if (prefix) {
+                filename = `${prefix} - ${viewsFormatted} - ${video.title}.${ext}`;
+            } else {
+                filename = `${viewsFormatted} - ${video.title}.${ext}`;
+            }
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -245,6 +206,33 @@ function downloadVideo(index) {
         });
 }
 
+// Download all videos
+async function downloadAllVideos() {
+    const validVideos = validatedVideos.filter(v => v.valid);
+
+    if (validVideos.length === 0) {
+        showStatus('Nenhum video valido para download', 'error');
+        return;
+    }
+
+    downloadAllBtn.disabled = true;
+    downloadAllBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
+
+    showStatus(`Iniciando download de ${validVideos.length} videos...`, 'info');
+
+    // Download each video
+    for (let i = 0; i < validatedVideos.length; i++) {
+        if (validatedVideos[i].valid) {
+            downloadVideo(i);
+            // Small delay between downloads to avoid overwhelming
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+
+    downloadAllBtn.disabled = false;
+    downloadAllBtn.innerHTML = '<span class="btn-icon">&#11015;</span> Baixar Todos';
+}
+
 // Validate URLs
 async function validateUrls() {
     const text = urlInput.value.trim();
@@ -266,21 +254,16 @@ async function validateUrls() {
     validateBtn.disabled = true;
     validateBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Verificando...';
     videoList.innerHTML = '';
+    downloadAllBtn.disabled = true;
     videoPrefixes = {};
     hideStatus();
 
     try {
-        const response = await authFetch('/api/validate', {
+        const response = await fetch('/api/validate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ urls })
         });
-
-        if (response.status === 401) {
-            localStorage.removeItem('authToken');
-            location.reload();
-            return;
-        }
 
         const data = await response.json();
 
@@ -291,22 +274,22 @@ async function validateUrls() {
 
         validatedVideos = data.videos;
 
-        // Display videos
         validatedVideos.forEach((video, index) => {
             const item = createVideoItem(video, index);
             videoList.appendChild(item);
+            // Set "Normal" as default prefix for valid videos
             if (video.valid) {
                 videoPrefixes[index] = 'Normal';
             }
         });
 
-        // Check if there are valid videos
         const validCount = validatedVideos.filter(v => v.valid).length;
 
         if (validCount === 0) {
             showStatus('Nenhum video valido para download', 'error');
         } else {
             showStatus(`${validCount} video(s) pronto(s) para download`, 'success');
+            downloadAllBtn.disabled = false;
         }
 
     } catch (error) {
@@ -317,8 +300,24 @@ async function validateUrls() {
     }
 }
 
+// Open downloads folder
+async function openFolder() {
+    try {
+        const response = await fetch('/api/open-folder');
+        const data = await response.json();
+
+        if (!data.success) {
+            showStatus('Erro ao abrir pasta', 'error');
+        }
+    } catch (error) {
+        showStatus('Erro ao abrir pasta: ' + error.message, 'error');
+    }
+}
+
 // Event Listeners
 validateBtn.addEventListener('click', validateUrls);
+downloadAllBtn.addEventListener('click', downloadAllVideos);
+openFolderBtn.addEventListener('click', openFolder);
 
 urlInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.ctrlKey) {

@@ -7,21 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="loginScreen" class="container login-container">
-        <header>
-            <h1>YouTube Downloader</h1>
-            <p class="subtitle">Digite a senha para acessar</p>
-        </header>
-        <div class="login-form">
-            <input type="password" id="passwordInput" placeholder="Senha" class="login-input" autofocus>
-            <button id="loginBtn" class="btn btn-success login-btn">Entrar</button>
-            <p id="loginError" class="login-error hidden">Senha incorreta</p>
-        </div>
-    </div>
-
-    <!-- Main App (hidden until login) -->
-    <div id="appScreen" class="container hidden">
+    <div class="container">
         <header>
             <h1>YouTube Downloader</h1>
             <p class="subtitle">Cole seus links do YouTube abaixo</p>
@@ -50,10 +36,28 @@
                         <span class="btn-icon">&#128269;</span>
                         Verificar Links
                     </button>
+                    <button id="downloadAllBtn" class="btn btn-success" disabled>
+                        <span class="btn-icon">&#11015;</span>
+                        Baixar Todos
+                    </button>
+                    <button id="openFolderBtn" class="btn btn-secondary">
+                        <span class="btn-icon">&#128193;</span>
+                        Abrir Pasta
+                    </button>
                 </div>
             </div>
 
             <div id="statusMessage" class="status-message hidden"></div>
+
+            <div id="overallProgress" class="overall-progress hidden">
+                <div class="progress-header">
+                    <span>Progresso Geral</span>
+                    <span id="overallProgressText">0/0</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="overallProgressBar" class="progress-fill"></div>
+                </div>
+            </div>
 
             <div id="videoList" class="video-list"></div>
         </main>

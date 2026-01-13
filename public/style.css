@@ -293,6 +293,13 @@ textarea::placeholder {
 .video-channel {
     color: var(--text-secondary);
     font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.video-views {
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
     margin-bottom: 0.5rem;
 }
 

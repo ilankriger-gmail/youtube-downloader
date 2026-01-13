@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  youtube-downloader:
+    build: .
+    container_name: youtube-downloader
+    ports:
+      - "3000:3000"
+    environment:
+      - PASSWORD=sua_senha_aqui
+    restart: unless-stopped
