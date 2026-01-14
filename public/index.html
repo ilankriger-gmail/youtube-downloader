@@ -69,6 +69,56 @@
                         <span class="channel-name">nextleveldj1</span>
                     </div>
 
+                    <!-- Content Type Tabs -->
+                    <div class="content-type-tabs">
+                        <button id="contentTypeVideos" class="content-type-btn active" data-type="videos">
+                            Videos
+                        </button>
+                        <button id="contentTypeShorts" class="content-type-btn" data-type="shorts">
+                            Shorts
+                        </button>
+                        <button id="contentTypeLives" class="content-type-btn" data-type="lives">
+                            Lives
+                        </button>
+                    </div>
+
+                    <!-- Filters Panel -->
+                    <div class="filters-panel">
+                        <div class="filters-header">
+                            <span>Filtros</span>
+                            <button id="clearFiltersBtn" class="btn btn-small btn-link">Limpar</button>
+                        </div>
+                        <div class="filters-grid">
+                            <div class="filter-group">
+                                <label>Views:</label>
+                                <div class="filter-range">
+                                    <input type="number" id="filterViewsMin" placeholder="Min" min="0">
+                                    <span>ate</span>
+                                    <input type="number" id="filterViewsMax" placeholder="Max" min="0">
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <label>Duracao:</label>
+                                <div class="filter-range">
+                                    <input type="text" id="filterDurationMin" placeholder="0:00" pattern="[0-9]+:[0-5][0-9]">
+                                    <span>ate</span>
+                                    <input type="text" id="filterDurationMax" placeholder="99:59" pattern="[0-9]+:[0-5][0-9]">
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <label>Data:</label>
+                                <div class="filter-range">
+                                    <input type="date" id="filterDateStart">
+                                    <span>ate</span>
+                                    <input type="date" id="filterDateEnd">
+                                </div>
+                            </div>
+                        </div>
+                        <button id="applyFiltersBtn" class="btn btn-primary btn-small">
+                            Aplicar Filtros
+                        </button>
+                    </div>
+
                     <div class="search-type-selector">
                         <button id="searchTypeAll" class="search-type-btn active">
                             Listar Todos

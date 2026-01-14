@@ -24,6 +24,21 @@ const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
 const selectionCount = document.getElementById('selectionCount');
 const searchResultsContainer = document.getElementById('searchResults');
 
+// DOM Elements - Content Type Tabs
+const contentTypeVideos = document.getElementById('contentTypeVideos');
+const contentTypeShorts = document.getElementById('contentTypeShorts');
+const contentTypeLives = document.getElementById('contentTypeLives');
+
+// DOM Elements - Filters
+const filterViewsMin = document.getElementById('filterViewsMin');
+const filterViewsMax = document.getElementById('filterViewsMax');
+const filterDurationMin = document.getElementById('filterDurationMin');
+const filterDurationMax = document.getElementById('filterDurationMax');
+const filterDateStart = document.getElementById('filterDateStart');
+const filterDateEnd = document.getElementById('filterDateEnd');
+const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+
 // DOM Elements - Shared
 const statusMessage = document.getElementById('statusMessage');
 const overallProgress = document.getElementById('overallProgress');
@@ -36,13 +51,25 @@ let videoPrefixes = {};
 
 // State - Search Mode
 let searchResults = [];
+let unfilteredResults = []; // Original results before filtering
 let selectedVideos = new Set();
 let currentMode = 'url';
 let searchType = 'all'; // 'all' or 'keyword'
+let contentType = 'videos'; // 'videos' | 'shorts' | 'lives'
 let currentSortField = 'views';
 let currentSortOrder = 'desc';
 let top5Ids = new Set();
 let bottom5Ids = new Set();
+
+// State - Filters
+let filters = {
+    viewsMin: null,
+    viewsMax: null,
+    durationMin: null,
+    durationMax: null,
+    dateStart: null,
+    dateEnd: null
+};
 
 // Initialize
 checkDependencies();
@@ -418,13 +445,158 @@ function setSearchType(type) {
         searchTypeKeyword.classList.remove('active');
         searchInput.disabled = true;
         searchInput.value = '';
-        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Carregar Todos';
+        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Carregar';
     } else {
         searchTypeAll.classList.remove('active');
         searchTypeKeyword.classList.add('active');
         searchInput.disabled = false;
         searchInput.focus();
         searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
+    }
+}
+
+// ==================== CONTENT TYPE FUNCTIONS ====================
+
+function setContentType(type) {
+    contentType = type;
+
+    // Update tab buttons
+    contentTypeVideos.classList.toggle('active', type === 'videos');
+    contentTypeShorts.classList.toggle('active', type === 'shorts');
+    contentTypeLives.classList.toggle('active', type === 'lives');
+
+    // Clear results when switching type
+    searchResults = [];
+    unfilteredResults = [];
+    selectedVideos.clear();
+    searchResultsContainer.innerHTML = '';
+    updateSelectionCount();
+    disableSelectionButtons();
+
+    // Show type-specific placeholder
+    const typeLabels = {
+        'videos': 'videos',
+        'shorts': 'shorts',
+        'lives': 'transmissoes ao vivo'
+    };
+    searchResultsContainer.innerHTML = `<div class="no-results"><p>Clique em "Carregar" para buscar ${typeLabels[type]} do canal</p></div>`;
+}
+
+// ==================== FILTER FUNCTIONS ====================
+
+function parseDurationInput(str) {
+    // Convert "mm:ss" or "m:ss" to seconds
+    if (!str || str.trim() === '') return null;
+
+    const parts = str.trim().split(':');
+    if (parts.length === 2) {
+        const mins = parseInt(parts[0]) || 0;
+        const secs = parseInt(parts[1]) || 0;
+        return mins * 60 + secs;
+    } else if (parts.length === 1) {
+        // Assume it's minutes only
+        return (parseInt(parts[0]) || 0) * 60;
+    }
+    return null;
+}
+
+function parseDateInput(dateStr) {
+    // Convert date input (YYYY-MM-DD) to yt-dlp format (YYYYMMDD)
+    if (!dateStr) return null;
+    return dateStr.replace(/-/g, '');
+}
+
+function getFiltersFromInputs() {
+    return {
+        viewsMin: filterViewsMin.value ? parseInt(filterViewsMin.value) : null,
+        viewsMax: filterViewsMax.value ? parseInt(filterViewsMax.value) : null,
+        durationMin: parseDurationInput(filterDurationMin.value),
+        durationMax: parseDurationInput(filterDurationMax.value),
+        dateStart: parseDateInput(filterDateStart.value),
+        dateEnd: parseDateInput(filterDateEnd.value)
+    };
+}
+
+function applyFilters() {
+    filters = getFiltersFromInputs();
+
+    if (unfilteredResults.length === 0) {
+        showStatus('Carregue os videos primeiro', 'error');
+        return;
+    }
+
+    // Apply filters to unfiltered results
+    searchResults = unfilteredResults.filter(video => {
+        // Views filter
+        if (filters.viewsMin !== null && (video.views || 0) < filters.viewsMin) return false;
+        if (filters.viewsMax !== null && (video.views || 0) > filters.viewsMax) return false;
+
+        // Duration filter
+        if (filters.durationMin !== null && (video.duration || 0) < filters.durationMin) return false;
+        if (filters.durationMax !== null && (video.duration || 0) > filters.durationMax) return false;
+
+        // Date filter
+        if (filters.dateStart !== null && (video.uploadDate || '') < filters.dateStart) return false;
+        if (filters.dateEnd !== null && (video.uploadDate || '') > filters.dateEnd) return false;
+
+        return true;
+    });
+
+    // Clear selection
+    selectedVideos.clear();
+    updateSelectionCount();
+
+    // Recalculate TOP/BOTTOM 5 based on filtered results
+    calculateTopBottom();
+
+    // Re-sort and render
+    sortSearchResults(currentSortField, currentSortOrder);
+
+    // Update buttons state
+    if (searchResults.length > 0) {
+        enableSelectionButtons();
+    } else {
+        disableSelectionButtons();
+    }
+
+    // Show filter status
+    const filteredCount = searchResults.length;
+    const totalCount = unfilteredResults.length;
+    if (filteredCount < totalCount) {
+        showStatus(`Mostrando ${filteredCount} de ${totalCount} videos (filtros aplicados)`, 'info');
+    } else {
+        showStatus(`${filteredCount} videos`, 'success');
+    }
+}
+
+function clearFilters() {
+    // Clear input fields
+    filterViewsMin.value = '';
+    filterViewsMax.value = '';
+    filterDurationMin.value = '';
+    filterDurationMax.value = '';
+    filterDateStart.value = '';
+    filterDateEnd.value = '';
+
+    // Reset filter state
+    filters = {
+        viewsMin: null,
+        viewsMax: null,
+        durationMin: null,
+        durationMax: null,
+        dateStart: null,
+        dateEnd: null
+    };
+
+    // Restore unfiltered results
+    if (unfilteredResults.length > 0) {
+        searchResults = [...unfilteredResults];
+        selectedVideos.clear();
+        updateSelectionCount();
+        calculateTopBottom();
+        sortSearchResults(currentSortField, currentSortOrder);
+        enableSelectionButtons();
+        showStatus(`${searchResults.length} videos`, 'success');
     }
 }
 
@@ -440,9 +612,16 @@ async function performSearch() {
     searchBtn.disabled = true;
     searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Carregando...';
 
+    const typeLabels = {
+        'videos': 'videos',
+        'shorts': 'shorts',
+        'lives': 'transmissoes'
+    };
+    const typeLabel = typeLabels[contentType];
+
     const loadingMsg = searchType === 'all'
-        ? 'Carregando todos os videos do canal nextleveldj1'
-        : `Buscando "${query}" no canal nextleveldj1`;
+        ? `Carregando ${typeLabel} do canal nextleveldj1...`
+        : `Buscando "${query}" nos ${typeLabel} do canal...`;
 
     searchResultsContainer.innerHTML = `<div class="loading">${loadingMsg}</div>`;
     selectedVideos.clear();
@@ -451,16 +630,24 @@ async function performSearch() {
 
     try {
         let response;
+        let endpoint;
 
         if (searchType === 'all') {
-            // List all channel videos
-            response = await fetch('/api/channel-videos', {
+            // List content by type
+            const endpoints = {
+                'videos': '/api/channel-videos',
+                'shorts': '/api/channel-shorts',
+                'lives': '/api/channel-lives'
+            };
+            endpoint = endpoints[contentType];
+
+            response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ limit: 500 })
             });
         } else {
-            // Search by keyword in channel
+            // Search by keyword in channel (for now, only videos support keyword search)
             response = await fetch('/api/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -476,27 +663,34 @@ async function performSearch() {
             return;
         }
 
-        searchResults = data.videos;
+        // Store both filtered and unfiltered results
+        unfilteredResults = data.videos;
+        searchResults = [...unfilteredResults];
 
         if (searchResults.length === 0) {
             const msg = searchType === 'all'
-                ? 'Nenhum video encontrado no canal'
+                ? `Nenhum ${typeLabel} encontrado no canal`
                 : `Nenhum video encontrado para "${query}"`;
-            searchResultsContainer.innerHTML = `<div class="no-results"><p>${msg}</p><p class="hint">Tente outras palavras-chave</p></div>`;
+            searchResultsContainer.innerHTML = `<div class="no-results"><p>${msg}</p><p class="hint">Tente outros filtros</p></div>`;
             showStatus('Nenhum resultado encontrado', 'error');
             return;
         }
 
-        // Calculate TOP 5 and BOTTOM 5 by views
-        calculateTopBottom();
+        // Apply any existing filters
+        if (hasActiveFilters()) {
+            applyFilters();
+        } else {
+            // Calculate TOP 5 and BOTTOM 5 by views
+            calculateTopBottom();
 
-        // Sort by views (highest first) by default
-        sortSearchResults('views', 'desc');
+            // Sort by views (highest first) by default
+            sortSearchResults('views', 'desc');
 
-        enableSelectionButtons();
+            enableSelectionButtons();
+        }
 
         const successMsg = searchType === 'all'
-            ? `${data.count} videos carregados do canal`
+            ? `${data.count} ${typeLabel} carregados do canal`
             : `${data.count} videos encontrados para "${query}"`;
         showStatus(successMsg, 'success');
 
@@ -506,9 +700,15 @@ async function performSearch() {
     } finally {
         searchBtn.disabled = false;
         searchBtn.innerHTML = searchType === 'all'
-            ? '<span class="btn-icon">&#128269;</span> Carregar Todos'
+            ? '<span class="btn-icon">&#128269;</span> Carregar'
             : '<span class="btn-icon">&#128269;</span> Buscar';
     }
+}
+
+function hasActiveFilters() {
+    return filterViewsMin.value || filterViewsMax.value ||
+           filterDurationMin.value || filterDurationMax.value ||
+           filterDateStart.value || filterDateEnd.value;
 }
 
 function calculateTopBottom() {
@@ -876,3 +1076,27 @@ searchInput.addEventListener('keydown', (e) => {
         performSearch();
     }
 });
+
+// Content Type Tabs
+contentTypeVideos.addEventListener('click', () => setContentType('videos'));
+contentTypeShorts.addEventListener('click', () => setContentType('shorts'));
+contentTypeLives.addEventListener('click', () => setContentType('lives'));
+
+// Filters
+applyFiltersBtn.addEventListener('click', applyFilters);
+clearFiltersBtn.addEventListener('click', clearFilters);
+
+// Duration input formatting (auto-add colon)
+filterDurationMin.addEventListener('input', formatDurationInput);
+filterDurationMax.addEventListener('input', formatDurationInput);
+
+function formatDurationInput(e) {
+    let value = e.target.value.replace(/[^0-9:]/g, '');
+
+    // If user types 3+ digits without colon, insert it
+    if (value.length >= 3 && !value.includes(':')) {
+        value = value.slice(0, -2) + ':' + value.slice(-2);
+    }
+
+    e.target.value = value;
+}

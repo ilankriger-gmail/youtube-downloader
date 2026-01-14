@@ -231,10 +231,11 @@ app.post('/api/channel-videos', async (req, res) => {
     const { limit = 100 } = req.body;
 
     try {
-        const results = await getChannelVideos(limit);
+        const results = await getChannelContent('videos', limit);
         res.json({
             query: 'nextleveldj1',
             count: results.length,
+            contentType: 'videos',
             videos: results
         });
     } catch (error) {
@@ -243,12 +244,54 @@ app.post('/api/channel-videos', async (req, res) => {
     }
 });
 
-// Get all videos from nextleveldj1 channel
-async function getChannelVideos(limit = 100) {
-    return new Promise((resolve, reject) => {
-        const channelUrl = 'https://www.youtube.com/@nextleveldj1/videos';
+// List all shorts from channel
+app.post('/api/channel-shorts', async (req, res) => {
+    const { limit = 100 } = req.body;
 
-        console.log(`[CHANNEL] Fetching videos from nextleveldj1 (limit: ${limit})`);
+    try {
+        const results = await getChannelContent('shorts', limit);
+        res.json({
+            query: 'nextleveldj1',
+            count: results.length,
+            contentType: 'shorts',
+            videos: results
+        });
+    } catch (error) {
+        console.error('[CHANNEL] Error:', error.message);
+        res.status(500).json({ error: error.message || 'Failed to get channel shorts' });
+    }
+});
+
+// List all lives/streams from channel
+app.post('/api/channel-lives', async (req, res) => {
+    const { limit = 100 } = req.body;
+
+    try {
+        const results = await getChannelContent('lives', limit);
+        res.json({
+            query: 'nextleveldj1',
+            count: results.length,
+            contentType: 'lives',
+            videos: results
+        });
+    } catch (error) {
+        console.error('[CHANNEL] Error:', error.message);
+        res.status(500).json({ error: error.message || 'Failed to get channel lives' });
+    }
+});
+
+// Get content from nextleveldj1 channel by type (videos, shorts, streams)
+async function getChannelContent(contentType = 'videos', limit = 100) {
+    return new Promise((resolve, reject) => {
+        const typeMap = {
+            'videos': 'videos',
+            'shorts': 'shorts',
+            'lives': 'streams'
+        };
+        const urlType = typeMap[contentType] || 'videos';
+        const channelUrl = `https://www.youtube.com/@nextleveldj1/${urlType}`;
+
+        console.log(`[CHANNEL] Fetching ${contentType} from nextleveldj1 (limit: ${limit})`);
 
         const ytdlp = spawn('yt-dlp', [
             '--dump-json',
@@ -300,17 +343,18 @@ async function getChannelVideos(limit = 100) {
                             views: info.view_count || 0,
                             thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
                             uploadDate: info.upload_date || '',
-                            platform: 'youtube'
+                            platform: 'youtube',
+                            contentType: contentType
                         });
                     } catch (parseError) {
                         // Skip invalid lines
                     }
                 }
 
-                console.log(`[CHANNEL] Found ${videos.length} videos from nextleveldj1`);
+                console.log(`[CHANNEL] Found ${videos.length} ${contentType} from nextleveldj1`);
                 resolve(videos);
             } catch (error) {
-                reject(new Error('Failed to parse channel videos'));
+                reject(new Error('Failed to parse channel content'));
             }
         });
 
@@ -319,6 +363,11 @@ async function getChannelVideos(limit = 100) {
             reject(err);
         });
     });
+}
+
+// Wrapper for backward compatibility
+async function getChannelVideos(limit = 100) {
+    return getChannelContent('videos', limit);
 }
 
 // Search within channel by keyword (filters locally)
