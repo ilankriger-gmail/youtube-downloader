@@ -44,6 +44,25 @@
             </button>
         </nav>
 
+        <!-- Progress Bar (Top) -->
+        <div
+            id="overallProgress"
+            class="overall-progress hidden"
+            role="progressbar"
+            aria-valuenow="0"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-label="Progresso do download"
+        >
+            <div class="progress-header">
+                <span>Progresso Geral</span>
+                <span id="overallProgressText">0/0</span>
+            </div>
+            <div class="progress-bar">
+                <div id="overallProgressBar" class="progress-fill"></div>
+            </div>
+        </div>
+
         <main>
             <!-- URL Mode Section -->
             <section
@@ -346,25 +365,6 @@
                 role="alert"
                 aria-live="assertive"
             ></div>
-
-            <!-- Progress Bar -->
-            <div
-                id="overallProgress"
-                class="overall-progress hidden"
-                role="progressbar"
-                aria-valuenow="0"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                aria-label="Progresso do download"
-            >
-                <div class="progress-header">
-                    <span>Progresso Geral</span>
-                    <span id="overallProgressText">0/0</span>
-                </div>
-                <div class="progress-bar">
-                    <div id="overallProgressBar" class="progress-fill"></div>
-                </div>
-            </div>
         </main>
 
         <footer>
