@@ -297,7 +297,6 @@ async function getChannelContent(contentType = 'videos', limit = 100) {
 
         const ytdlp = spawn('yt-dlp', [
             '--dump-json',
-            '--flat-playlist',
             '--no-download',
             '--no-warnings',
             '--ignore-errors',
@@ -312,7 +311,7 @@ async function getChannelContent(contentType = 'videos', limit = 100) {
         const timeout = setTimeout(() => {
             ytdlp.kill('SIGTERM');
             reject(new Error('Channel fetch timeout'));
-        }, 120000);
+        }, 300000); // 5 minutes for full metadata fetch
 
         ytdlp.stdout.on('data', (data) => {
             stdout += data.toString();

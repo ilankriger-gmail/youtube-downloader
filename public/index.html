@@ -20,6 +20,46 @@
             <p class="subtitle">YouTube <span>•</span> TikTok <span>•</span> Instagram</p>
         </header>
 
+        <!-- Platform Navigation -->
+        <nav class="platform-tabs" role="tablist" aria-label="Plataforma">
+            <button
+                id="platformYoutube"
+                class="platform-tab active"
+                role="tab"
+                aria-selected="true"
+                aria-controls="youtubePanel"
+                data-platform="youtube"
+            >
+                <span class="platform-icon" aria-hidden="true">&#9658;</span>
+                YouTube
+            </button>
+            <button
+                id="platformInstagram"
+                class="platform-tab"
+                role="tab"
+                aria-selected="false"
+                aria-controls="instagramPanel"
+                data-platform="instagram"
+            >
+                <span class="platform-icon" aria-hidden="true">&#128247;</span>
+                Instagram
+            </button>
+            <button
+                id="platformTiktok"
+                class="platform-tab"
+                role="tab"
+                aria-selected="false"
+                aria-controls="tiktokPanel"
+                data-platform="tiktok"
+            >
+                <span class="platform-icon" aria-hidden="true">&#127926;</span>
+                TikTok
+            </button>
+        </nav>
+
+        <!-- ==================== YOUTUBE PANEL ==================== -->
+        <div id="youtubePanel" class="platform-panel" role="tabpanel" aria-labelledby="platformYoutube">
+
         <!-- Mode Navigation -->
         <nav class="mode-tabs" role="tablist" aria-label="Modo de download">
             <button
@@ -366,6 +406,359 @@
                 aria-live="assertive"
             ></div>
         </main>
+
+        </div><!-- End YouTube Panel -->
+
+        <!-- ==================== INSTAGRAM PANEL ==================== -->
+        <div id="instagramPanel" class="platform-panel hidden" role="tabpanel" aria-labelledby="platformInstagram">
+
+            <!-- Mode Navigation -->
+            <nav class="mode-tabs" role="tablist" aria-label="Modo Instagram">
+                <button
+                    id="igModeTabUrl"
+                    class="mode-tab active"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="igUrlModeSection"
+                >
+                    <span class="tab-icon" aria-hidden="true">&#128279;</span>
+                    Links Diretos
+                </button>
+                <button
+                    id="igModeTabProfile"
+                    class="mode-tab"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="igProfileModeSection"
+                >
+                    <span class="tab-icon" aria-hidden="true">&#128100;</span>
+                    Buscar Perfil
+                </button>
+            </nav>
+
+            <main>
+                <!-- Instagram URL Mode Section -->
+                <section
+                    id="igUrlModeSection"
+                    class="mode-section"
+                    role="tabpanel"
+                    aria-labelledby="igModeTabUrl"
+                >
+                    <div class="input-section">
+                        <label for="igUrlInput" class="visually-hidden">Cole os links do Instagram</label>
+                        <textarea
+                            id="igUrlInput"
+                            placeholder="Cole os links do Instagram aqui, um por linha...&#10;&#10;Exemplos:&#10;https://www.instagram.com/reel/xxxxx&#10;https://www.instagram.com/p/xxxxx&#10;https://www.instagram.com/stories/user/xxxxx"
+                            rows="6"
+                            aria-describedby="igUrlInputHint"
+                        ></textarea>
+                        <p id="igUrlInputHint" class="visually-hidden">
+                            Suporta Reels, Posts e Stories do Instagram.
+                        </p>
+
+                        <div class="controls-row">
+                            <div class="quality-section">
+                                <label for="igQualitySelect">Qualidade:</label>
+                                <select id="igQualitySelect" class="quality-select">
+                                    <option value="best" selected>Melhor Disponivel</option>
+                                    <option value="1080">1080p Full HD</option>
+                                    <option value="720">720p HD</option>
+                                    <option value="480">480p SD</option>
+                                    <option value="audio">Apenas Audio (MP3)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="igValidateBtn" class="btn btn-instagram">
+                                <span class="btn-icon" aria-hidden="true">&#128269;</span>
+                                Verificar Links
+                            </button>
+                            <button id="igDownloadAllBtn" class="btn btn-success" disabled aria-disabled="true">
+                                <span class="btn-icon" aria-hidden="true">&#11015;</span>
+                                Baixar Todos
+                            </button>
+                            <button id="igOpenFolderBtn" class="btn btn-secondary">
+                                <span class="btn-icon" aria-hidden="true">&#128193;</span>
+                                Abrir Pasta
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Instagram Video List -->
+                    <div id="igVideoList" class="video-list" role="list" aria-label="Videos do Instagram verificados"></div>
+                </section>
+
+                <!-- Instagram Profile Mode Section -->
+                <section
+                    id="igProfileModeSection"
+                    class="mode-section hidden"
+                    role="tabpanel"
+                    aria-labelledby="igModeTabProfile"
+                >
+                    <div class="input-section">
+                        <!-- Profile Input -->
+                        <div class="profile-input-row">
+                            <label for="igProfileInput" class="visually-hidden">Username do Instagram</label>
+                            <input
+                                type="text"
+                                id="igProfileInput"
+                                class="profile-input"
+                                placeholder="Digite o username (ex: @cristiano)"
+                                autocomplete="off"
+                            >
+                            <button id="igLoadProfileBtn" class="btn btn-instagram">
+                                <span class="btn-icon" aria-hidden="true">&#128269;</span>
+                                Carregar Perfil
+                            </button>
+                        </div>
+
+                        <!-- Content Type Tabs -->
+                        <div class="content-type-tabs" role="tablist" aria-label="Tipo de conteudo Instagram">
+                            <button
+                                id="igContentTypePosts"
+                                class="content-type-btn active"
+                                role="tab"
+                                aria-selected="true"
+                                data-type="posts"
+                            >
+                                Posts
+                            </button>
+                            <button
+                                id="igContentTypeReels"
+                                class="content-type-btn"
+                                role="tab"
+                                aria-selected="false"
+                                data-type="reels"
+                            >
+                                Reels
+                            </button>
+                            <button
+                                id="igContentTypeStories"
+                                class="content-type-btn"
+                                role="tab"
+                                aria-selected="false"
+                                data-type="stories"
+                            >
+                                Stories
+                            </button>
+                        </div>
+
+                        <!-- Sort & Quality Controls -->
+                        <div class="search-controls">
+                            <div class="sort-section">
+                                <label for="igSortBySelect">Ordenar:</label>
+                                <select id="igSortBySelect" class="sort-select">
+                                    <option value="views-desc" selected>Views (maior)</option>
+                                    <option value="views-asc">Views (menor)</option>
+                                    <option value="date-desc">Mais recente</option>
+                                    <option value="date-asc">Mais antigo</option>
+                                </select>
+                            </div>
+
+                            <div class="quality-section">
+                                <label for="igProfileQualitySelect">Qualidade:</label>
+                                <select id="igProfileQualitySelect" class="quality-select">
+                                    <option value="best" selected>Melhor Disponivel</option>
+                                    <option value="1080">1080p Full HD</option>
+                                    <option value="720">720p HD</option>
+                                    <option value="480">480p SD</option>
+                                    <option value="audio">Apenas Audio (MP3)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Selection Controls -->
+                        <div class="selection-controls">
+                            <div class="selection-buttons">
+                                <button id="igSelectTop5Btn" class="btn btn-selection btn-top5" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#9650;</span>
+                                    TOP 5
+                                </button>
+                                <button id="igSelectBottom5Btn" class="btn btn-selection btn-bottom5" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#9660;</span>
+                                    BOTTOM 5
+                                </button>
+                                <button id="igClearSelectionBtn" class="btn btn-secondary btn-small" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#10005;</span>
+                                    Limpar
+                                </button>
+                            </div>
+                            <div class="selection-info">
+                                <span id="igSelectionCount" role="status" aria-live="polite">0 selecionado(s)</span>
+                                <button id="igDownloadSelectedBtn" class="btn btn-success" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#11015;</span>
+                                    Baixar Selecionados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instagram Profile Results -->
+                    <div id="igProfileResults" class="search-results" role="list" aria-label="Conteudo do perfil"></div>
+                </section>
+            </main>
+        </div><!-- End Instagram Panel -->
+
+        <!-- ==================== TIKTOK PANEL ==================== -->
+        <div id="tiktokPanel" class="platform-panel hidden" role="tabpanel" aria-labelledby="platformTiktok">
+
+            <!-- Mode Navigation -->
+            <nav class="mode-tabs" role="tablist" aria-label="Modo TikTok">
+                <button
+                    id="tkModeTabUrl"
+                    class="mode-tab active"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="tkUrlModeSection"
+                >
+                    <span class="tab-icon" aria-hidden="true">&#128279;</span>
+                    Links Diretos
+                </button>
+                <button
+                    id="tkModeTabProfile"
+                    class="mode-tab"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="tkProfileModeSection"
+                >
+                    <span class="tab-icon" aria-hidden="true">&#128100;</span>
+                    Buscar Perfil
+                </button>
+            </nav>
+
+            <main>
+                <!-- TikTok URL Mode Section -->
+                <section
+                    id="tkUrlModeSection"
+                    class="mode-section"
+                    role="tabpanel"
+                    aria-labelledby="tkModeTabUrl"
+                >
+                    <div class="input-section">
+                        <label for="tkUrlInput" class="visually-hidden">Cole os links do TikTok</label>
+                        <textarea
+                            id="tkUrlInput"
+                            placeholder="Cole os links do TikTok aqui, um por linha...&#10;&#10;Exemplos:&#10;https://www.tiktok.com/@user/video/123&#10;https://vm.tiktok.com/xxxxx&#10;https://www.tiktok.com/t/xxxxx"
+                            rows="6"
+                            aria-describedby="tkUrlInputHint"
+                        ></textarea>
+                        <p id="tkUrlInputHint" class="visually-hidden">
+                            Suporta videos do TikTok.
+                        </p>
+
+                        <div class="controls-row">
+                            <div class="quality-section">
+                                <label for="tkQualitySelect">Qualidade:</label>
+                                <select id="tkQualitySelect" class="quality-select">
+                                    <option value="best" selected>Melhor Disponivel</option>
+                                    <option value="1080">1080p Full HD</option>
+                                    <option value="720">720p HD</option>
+                                    <option value="480">480p SD</option>
+                                    <option value="audio">Apenas Audio (MP3)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="tkValidateBtn" class="btn btn-tiktok">
+                                <span class="btn-icon" aria-hidden="true">&#128269;</span>
+                                Verificar Links
+                            </button>
+                            <button id="tkDownloadAllBtn" class="btn btn-success" disabled aria-disabled="true">
+                                <span class="btn-icon" aria-hidden="true">&#11015;</span>
+                                Baixar Todos
+                            </button>
+                            <button id="tkOpenFolderBtn" class="btn btn-secondary">
+                                <span class="btn-icon" aria-hidden="true">&#128193;</span>
+                                Abrir Pasta
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TikTok Video List -->
+                    <div id="tkVideoList" class="video-list" role="list" aria-label="Videos do TikTok verificados"></div>
+                </section>
+
+                <!-- TikTok Profile Mode Section -->
+                <section
+                    id="tkProfileModeSection"
+                    class="mode-section hidden"
+                    role="tabpanel"
+                    aria-labelledby="tkModeTabProfile"
+                >
+                    <div class="input-section">
+                        <!-- Profile Input -->
+                        <div class="profile-input-row">
+                            <label for="tkProfileInput" class="visually-hidden">Username do TikTok</label>
+                            <input
+                                type="text"
+                                id="tkProfileInput"
+                                class="profile-input"
+                                placeholder="Digite o username (ex: @charlidamelio)"
+                                autocomplete="off"
+                            >
+                            <button id="tkLoadProfileBtn" class="btn btn-tiktok">
+                                <span class="btn-icon" aria-hidden="true">&#128269;</span>
+                                Carregar Perfil
+                            </button>
+                        </div>
+
+                        <!-- Sort & Quality Controls -->
+                        <div class="search-controls">
+                            <div class="sort-section">
+                                <label for="tkSortBySelect">Ordenar:</label>
+                                <select id="tkSortBySelect" class="sort-select">
+                                    <option value="views-desc" selected>Views (maior)</option>
+                                    <option value="views-asc">Views (menor)</option>
+                                    <option value="date-desc">Mais recente</option>
+                                    <option value="date-asc">Mais antigo</option>
+                                </select>
+                            </div>
+
+                            <div class="quality-section">
+                                <label for="tkProfileQualitySelect">Qualidade:</label>
+                                <select id="tkProfileQualitySelect" class="quality-select">
+                                    <option value="best" selected>Melhor Disponivel</option>
+                                    <option value="1080">1080p Full HD</option>
+                                    <option value="720">720p HD</option>
+                                    <option value="480">480p SD</option>
+                                    <option value="audio">Apenas Audio (MP3)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Selection Controls -->
+                        <div class="selection-controls">
+                            <div class="selection-buttons">
+                                <button id="tkSelectTop5Btn" class="btn btn-selection btn-top5" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#9650;</span>
+                                    TOP 5
+                                </button>
+                                <button id="tkSelectBottom5Btn" class="btn btn-selection btn-bottom5" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#9660;</span>
+                                    BOTTOM 5
+                                </button>
+                                <button id="tkClearSelectionBtn" class="btn btn-secondary btn-small" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#10005;</span>
+                                    Limpar
+                                </button>
+                            </div>
+                            <div class="selection-info">
+                                <span id="tkSelectionCount" role="status" aria-live="polite">0 selecionado(s)</span>
+                                <button id="tkDownloadSelectedBtn" class="btn btn-success" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#11015;</span>
+                                    Baixar Selecionados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TikTok Profile Results -->
+                    <div id="tkProfileResults" class="search-results" role="list" aria-label="Videos do perfil"></div>
+                </section>
+            </main>
+        </div><!-- End TikTok Panel -->
 
         <footer>
             <p>Desenvolvido com yt-dlp</p>
