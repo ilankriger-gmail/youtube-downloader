@@ -282,6 +282,226 @@ app.post('/api/channel-lives', async (req, res) => {
     }
 });
 
+// ==================== INSTAGRAM PROFILE ====================
+
+// Get content from Instagram profile
+app.post('/api/instagram-profile', async (req, res) => {
+    const { username, contentType = 'reels', limit = 100 } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        const results = await getInstagramProfile(username, contentType, limit);
+        res.json({
+            username: username,
+            count: results.length,
+            contentType: contentType,
+            videos: results
+        });
+    } catch (error) {
+        console.error('[INSTAGRAM] Error:', error.message);
+        res.status(500).json({ error: error.message || 'Failed to get Instagram profile' });
+    }
+});
+
+// Get Instagram profile content using yt-dlp
+async function getInstagramProfile(username, contentType = 'reels', limit = 100) {
+    return new Promise((resolve, reject) => {
+        // Instagram profile URLs
+        const urlMap = {
+            'posts': `https://www.instagram.com/${username}/`,
+            'reels': `https://www.instagram.com/${username}/reels/`,
+            'stories': `https://www.instagram.com/stories/${username}/`
+        };
+        const profileUrl = urlMap[contentType] || urlMap['reels'];
+
+        console.log(`[INSTAGRAM] Fetching ${contentType} from @${username} (limit: ${limit})`);
+
+        const ytdlp = spawn('yt-dlp', [
+            '--dump-json',
+            '--flat-playlist',
+            '--no-download',
+            '--no-warnings',
+            '--ignore-errors',
+            '--playlist-end', String(limit),
+            profileUrl
+        ]);
+
+        let stdout = '';
+        let stderr = '';
+
+        const timeout = setTimeout(() => {
+            ytdlp.kill('SIGTERM');
+            reject(new Error('Instagram fetch timeout'));
+        }, 300000); // 5 minutes
+
+        ytdlp.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        ytdlp.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        ytdlp.on('close', (code) => {
+            clearTimeout(timeout);
+
+            if (code !== 0 && stdout.length === 0) {
+                // Check if it's a private account or login required
+                if (stderr.includes('login') || stderr.includes('private')) {
+                    reject(new Error('Conta privada ou login necessario'));
+                } else {
+                    reject(new Error(stderr || 'Failed to fetch Instagram profile'));
+                }
+                return;
+            }
+
+            try {
+                const lines = stdout.trim().split('\n').filter(line => line.trim());
+                const videos = [];
+
+                for (const line of lines) {
+                    try {
+                        const info = JSON.parse(line);
+                        videos.push({
+                            id: info.id,
+                            url: info.webpage_url || info.url || `https://www.instagram.com/reel/${info.id}/`,
+                            title: info.title || info.description?.substring(0, 100) || 'Instagram Video',
+                            channel: info.channel || info.uploader || username,
+                            duration: info.duration || 0,
+                            views: info.view_count || info.like_count || 0,
+                            thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
+                            uploadDate: info.upload_date || '',
+                            platform: 'instagram',
+                            contentType: contentType
+                        });
+                    } catch (parseError) {
+                        // Skip invalid lines
+                    }
+                }
+
+                console.log(`[INSTAGRAM] Found ${videos.length} ${contentType} from @${username}`);
+                resolve(videos);
+            } catch (error) {
+                reject(new Error('Failed to parse Instagram content'));
+            }
+        });
+
+        ytdlp.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+        });
+    });
+}
+
+// ==================== TIKTOK PROFILE ====================
+
+// Get content from TikTok profile
+app.post('/api/tiktok-profile', async (req, res) => {
+    const { username, limit = 100 } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        const results = await getTikTokProfile(username, limit);
+        res.json({
+            username: username,
+            count: results.length,
+            videos: results
+        });
+    } catch (error) {
+        console.error('[TIKTOK] Error:', error.message);
+        res.status(500).json({ error: error.message || 'Failed to get TikTok profile' });
+    }
+});
+
+// Get TikTok profile content using yt-dlp
+async function getTikTokProfile(username, limit = 100) {
+    return new Promise((resolve, reject) => {
+        const profileUrl = `https://www.tiktok.com/@${username}`;
+
+        console.log(`[TIKTOK] Fetching videos from @${username} (limit: ${limit})`);
+
+        const ytdlp = spawn('yt-dlp', [
+            '--dump-json',
+            '--flat-playlist',
+            '--no-download',
+            '--no-warnings',
+            '--ignore-errors',
+            '--playlist-end', String(limit),
+            profileUrl
+        ]);
+
+        let stdout = '';
+        let stderr = '';
+
+        const timeout = setTimeout(() => {
+            ytdlp.kill('SIGTERM');
+            reject(new Error('TikTok fetch timeout'));
+        }, 300000); // 5 minutes
+
+        ytdlp.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        ytdlp.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        ytdlp.on('close', (code) => {
+            clearTimeout(timeout);
+
+            if (code !== 0 && stdout.length === 0) {
+                // Check if it's a private account
+                if (stderr.includes('private') || stderr.includes('unavailable')) {
+                    reject(new Error('Conta privada ou indisponivel'));
+                } else {
+                    reject(new Error(stderr || 'Failed to fetch TikTok profile'));
+                }
+                return;
+            }
+
+            try {
+                const lines = stdout.trim().split('\n').filter(line => line.trim());
+                const videos = [];
+
+                for (const line of lines) {
+                    try {
+                        const info = JSON.parse(line);
+                        videos.push({
+                            id: info.id,
+                            url: info.webpage_url || info.url || `https://www.tiktok.com/@${username}/video/${info.id}`,
+                            title: info.title || info.description?.substring(0, 100) || 'TikTok Video',
+                            channel: info.channel || info.uploader || username,
+                            duration: info.duration || 0,
+                            views: info.view_count || info.play_count || 0,
+                            thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
+                            uploadDate: info.upload_date || '',
+                            platform: 'tiktok'
+                        });
+                    } catch (parseError) {
+                        // Skip invalid lines
+                    }
+                }
+
+                console.log(`[TIKTOK] Found ${videos.length} videos from @${username}`);
+                resolve(videos);
+            } catch (error) {
+                reject(new Error('Failed to parse TikTok content'));
+            }
+        });
+
+        ytdlp.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+        });
+    });
+}
+
 // Get content from nextleveldj1 channel by type (videos, shorts, streams)
 async function getChannelContent(contentType = 'videos', limit = 100) {
     return new Promise((resolve, reject) => {

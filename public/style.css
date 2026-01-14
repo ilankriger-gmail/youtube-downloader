@@ -213,6 +213,25 @@ main {
     box-shadow: var(--shadow-md);
 }
 
+/* Info Notice */
+.info-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--info-subtle);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-4);
+}
+
+.info-notice .info-icon {
+    color: var(--info);
+    font-size: 1rem;
+}
+
 /* Textarea */
 textarea {
     width: 100%;
@@ -772,6 +791,154 @@ textarea::placeholder {
     display: flex;
     gap: var(--space-3);
     justify-content: flex-end;
+}
+
+/* ============================================
+   INFO NOTICE
+   ============================================ */
+.info-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--info-subtle);
+    border: 1px solid var(--info);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.info-icon {
+    font-size: 1.25rem;
+    color: var(--info);
+    flex-shrink: 0;
+}
+
+/* ============================================
+   QUICK DATE FILTERS
+   ============================================ */
+.quick-filters-section {
+    background: var(--bg-base);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.quick-filters-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-3);
+}
+
+.quick-filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.quick-filters-row:last-child {
+    margin-bottom: 0;
+}
+
+.quick-filter-btn {
+    padding: var(--space-2) var(--space-3);
+    border: 2px solid var(--bg-overlay);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.quick-filter-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.quick-filter-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+}
+
+/* Platform-specific quick filter colors */
+.ig-quick-filter.active {
+    background: var(--instagram);
+    border-color: var(--instagram);
+}
+
+.ig-quick-filter:hover {
+    border-color: var(--instagram);
+}
+
+.tk-quick-filter.active {
+    background: var(--tiktok);
+    border-color: var(--tiktok);
+    color: var(--text-inverse);
+}
+
+.tk-quick-filter:hover {
+    border-color: var(--tiktok);
+}
+
+.quick-filter-select {
+    padding: var(--space-2) var(--space-3);
+    padding-right: var(--space-6);
+    border: 2px solid var(--bg-overlay);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color var(--transition-base);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23A1A1AA' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    min-width: 100px;
+}
+
+.quick-filter-select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.quick-filter-select option {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+/* Responsive quick filters */
+@media (max-width: 768px) {
+    .quick-filters-row {
+        justify-content: center;
+    }
+
+    .quick-filter-btn {
+        flex: 1 1 auto;
+        min-width: 70px;
+        text-align: center;
+    }
+
+    .quick-filter-select {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-filter-btn {
+        padding: var(--space-1) var(--space-2);
+        font-size: 0.75rem;
+    }
 }
 
 /* ============================================
