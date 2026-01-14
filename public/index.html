@@ -19,7 +19,7 @@
                 <span class="tab-icon">&#128279;</span> Links Diretos
             </button>
             <button id="modeTabSearch" class="mode-tab">
-                <span class="tab-icon">&#128269;</span> Buscar no YouTube
+                <span class="tab-icon">&#128269;</span> Meu Canal
             </button>
         </div>
 
@@ -65,14 +65,28 @@
             <!-- Search Mode Section -->
             <div id="searchModeSection" class="mode-section hidden">
                 <div class="input-section">
+                    <div class="channel-header">
+                        <span class="channel-name">nextleveldj1</span>
+                    </div>
+
+                    <div class="search-type-selector">
+                        <button id="searchTypeAll" class="search-type-btn active">
+                            Listar Todos
+                        </button>
+                        <button id="searchTypeKeyword" class="search-type-btn">
+                            Buscar por Palavra
+                        </button>
+                    </div>
+
                     <div class="search-input-row">
                         <input type="text"
                                id="searchInput"
                                class="search-input"
-                               placeholder="Digite palavras-chave para buscar no YouTube..."
-                               autocomplete="off">
+                               placeholder="Digite para filtrar videos do canal..."
+                               autocomplete="off"
+                               disabled>
                         <button id="searchBtn" class="btn btn-primary">
-                            <span class="btn-icon">&#128269;</span> Buscar
+                            <span class="btn-icon">&#128269;</span> Carregar
                         </button>
                     </div>
 

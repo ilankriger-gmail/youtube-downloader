@@ -11,6 +11,8 @@ const modeTabUrl = document.getElementById('modeTabUrl');
 const modeTabSearch = document.getElementById('modeTabSearch');
 const urlModeSection = document.getElementById('urlModeSection');
 const searchModeSection = document.getElementById('searchModeSection');
+const searchTypeAll = document.getElementById('searchTypeAll');
+const searchTypeKeyword = document.getElementById('searchTypeKeyword');
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const searchQualitySelect = document.getElementById('searchQualitySelect');
@@ -36,6 +38,7 @@ let videoPrefixes = {};
 let searchResults = [];
 let selectedVideos = new Set();
 let currentMode = 'url';
+let searchType = 'all'; // 'all' or 'keyword'
 let currentSortField = 'views';
 let currentSortOrder = 'desc';
 let top5Ids = new Set();
@@ -407,40 +410,79 @@ async function openFolder() {
 
 // ==================== SEARCH MODE FUNCTIONS ====================
 
+function setSearchType(type) {
+    searchType = type;
+
+    if (type === 'all') {
+        searchTypeAll.classList.add('active');
+        searchTypeKeyword.classList.remove('active');
+        searchInput.disabled = true;
+        searchInput.value = '';
+        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Carregar Todos';
+    } else {
+        searchTypeAll.classList.remove('active');
+        searchTypeKeyword.classList.add('active');
+        searchInput.disabled = false;
+        searchInput.focus();
+        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
+    }
+}
+
 async function performSearch() {
     const query = searchInput.value.trim();
 
-    if (!query) {
+    // For keyword search, require a query
+    if (searchType === 'keyword' && !query) {
         showStatus('Digite uma palavra-chave para buscar', 'error');
         return;
     }
 
     searchBtn.disabled = true;
-    searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Buscando...';
-    searchResultsContainer.innerHTML = '<div class="loading">Buscando 100 videos no YouTube</div>';
+    searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Carregando...';
+
+    const loadingMsg = searchType === 'all'
+        ? 'Carregando todos os videos do canal nextleveldj1'
+        : `Buscando "${query}" no canal nextleveldj1`;
+
+    searchResultsContainer.innerHTML = `<div class="loading">${loadingMsg}</div>`;
     selectedVideos.clear();
     updateSelectionCount();
     disableSelectionButtons();
 
     try {
-        const response = await fetch('/api/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, limit: 100 })
-        });
+        let response;
+
+        if (searchType === 'all') {
+            // List all channel videos
+            response = await fetch('/api/channel-videos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ limit: 500 })
+            });
+        } else {
+            // Search by keyword in channel
+            response = await fetch('/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, limit: 100, channelOnly: true })
+            });
+        }
 
         const data = await response.json();
 
         if (data.error) {
             showStatus(data.error, 'error');
-            searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro na busca</p><p class="hint">${data.error}</p></div>`;
+            searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro</p><p class="hint">${data.error}</p></div>`;
             return;
         }
 
         searchResults = data.videos;
 
         if (searchResults.length === 0) {
-            searchResultsContainer.innerHTML = `<div class="no-results"><p>Nenhum video encontrado para "${query}"</p><p class="hint">Tente outras palavras-chave</p></div>`;
+            const msg = searchType === 'all'
+                ? 'Nenhum video encontrado no canal'
+                : `Nenhum video encontrado para "${query}"`;
+            searchResultsContainer.innerHTML = `<div class="no-results"><p>${msg}</p><p class="hint">Tente outras palavras-chave</p></div>`;
             showStatus('Nenhum resultado encontrado', 'error');
             return;
         }
@@ -452,14 +494,20 @@ async function performSearch() {
         sortSearchResults('views', 'desc');
 
         enableSelectionButtons();
-        showStatus(`${data.count} videos encontrados para "${query}"`, 'success');
+
+        const successMsg = searchType === 'all'
+            ? `${data.count} videos carregados do canal`
+            : `${data.count} videos encontrados para "${query}"`;
+        showStatus(successMsg, 'success');
 
     } catch (error) {
-        showStatus('Erro na busca: ' + error.message, 'error');
-        searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro na busca</p><p class="hint">${error.message}</p></div>`;
+        showStatus('Erro: ' + error.message, 'error');
+        searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro</p><p class="hint">${error.message}</p></div>`;
     } finally {
         searchBtn.disabled = false;
-        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
+        searchBtn.innerHTML = searchType === 'all'
+            ? '<span class="btn-icon">&#128269;</span> Carregar Todos'
+            : '<span class="btn-icon">&#128269;</span> Buscar';
     }
 }
 
@@ -809,6 +857,8 @@ urlInput.addEventListener('keydown', (e) => {
 });
 
 // Search Mode
+searchTypeAll.addEventListener('click', () => setSearchType('all'));
+searchTypeKeyword.addEventListener('click', () => setSearchType('keyword'));
 searchBtn.addEventListener('click', performSearch);
 selectTop5Btn.addEventListener('click', selectTop5);
 selectBottom5Btn.addEventListener('click', selectBottom5);
