@@ -29,7 +29,10 @@ const contentTypeVideos = document.getElementById('contentTypeVideos');
 const contentTypeShorts = document.getElementById('contentTypeShorts');
 const contentTypeLives = document.getElementById('contentTypeLives');
 
-// DOM Elements - Filters
+// DOM Elements - Filters (Collapsible)
+const filtersToggle = document.getElementById('filtersToggle');
+const filtersPanel = document.getElementById('filtersPanel');
+const filterCountBadge = document.getElementById('filterCountBadge');
 const filterViewsMin = document.getElementById('filterViewsMin');
 const filterViewsMax = document.getElementById('filterViewsMax');
 const filterDurationMin = document.getElementById('filterDurationMin');
@@ -44,6 +47,7 @@ const statusMessage = document.getElementById('statusMessage');
 const overallProgress = document.getElementById('overallProgress');
 const overallProgressBar = document.getElementById('overallProgressBar');
 const overallProgressText = document.getElementById('overallProgressText');
+const toastContainer = document.getElementById('toastContainer');
 
 // State - URL Mode
 let validatedVideos = [];
@@ -116,6 +120,9 @@ function switchMode(mode) {
         searchModeSection.classList.remove('hidden');
     }
 
+    // Update ARIA
+    updateModeTabsAria(mode);
+
     hideStatus();
     overallProgress.classList.add('hidden');
 }
@@ -136,6 +143,75 @@ function showStatus(message, type = 'info') {
 
 function hideStatus() {
     statusMessage.classList.add('hidden');
+}
+
+// ==================== TOAST NOTIFICATIONS ====================
+
+function showToast(message, type = 'info', duration = 4000) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+
+    const icons = {
+        success: '&#10003;',
+        error: '&#10007;',
+        info: '&#8505;'
+    };
+
+    toast.innerHTML = `
+        <span class="toast__icon">${icons[type] || icons.info}</span>
+        <span class="toast__message">${message}</span>
+        <button class="toast__close" aria-label="Fechar">&times;</button>
+    `;
+
+    const closeBtn = toast.querySelector('.toast__close');
+    closeBtn.addEventListener('click', () => removeToast(toast));
+
+    toastContainer.appendChild(toast);
+
+    // Auto remove
+    if (duration > 0) {
+        setTimeout(() => removeToast(toast), duration);
+    }
+
+    return toast;
+}
+
+function removeToast(toast) {
+    if (!toast || !toast.parentNode) return;
+    toast.classList.add('hiding');
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 300);
+}
+
+// ==================== COLLAPSIBLE FILTERS ====================
+
+function toggleFilters() {
+    const isExpanded = filtersToggle.getAttribute('aria-expanded') === 'true';
+
+    filtersToggle.setAttribute('aria-expanded', !isExpanded);
+    filtersToggle.classList.toggle('expanded', !isExpanded);
+    filtersPanel.classList.toggle('expanded', !isExpanded);
+    filtersPanel.setAttribute('aria-hidden', isExpanded);
+}
+
+function updateFilterBadge() {
+    const count = countActiveFilters();
+    filterCountBadge.textContent = count;
+    filterCountBadge.classList.toggle('hidden', count === 0);
+}
+
+function countActiveFilters() {
+    let count = 0;
+    if (filterViewsMin.value) count++;
+    if (filterViewsMax.value) count++;
+    if (filterDurationMin.value) count++;
+    if (filterDurationMax.value) count++;
+    if (filterDateStart.value) count++;
+    if (filterDateEnd.value) count++;
+    return count;
 }
 
 function formatDuration(seconds) {
@@ -444,15 +520,20 @@ function setSearchType(type) {
         searchTypeAll.classList.add('active');
         searchTypeKeyword.classList.remove('active');
         searchInput.disabled = true;
+        searchInput.setAttribute('aria-disabled', 'true');
         searchInput.value = '';
         searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Carregar';
     } else {
         searchTypeAll.classList.remove('active');
         searchTypeKeyword.classList.add('active');
         searchInput.disabled = false;
+        searchInput.setAttribute('aria-disabled', 'false');
         searchInput.focus();
         searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
     }
+
+    // Update ARIA
+    updateSearchTypeAria(type);
 }
 
 // ==================== CONTENT TYPE FUNCTIONS ====================
@@ -464,6 +545,9 @@ function setContentType(type) {
     contentTypeVideos.classList.toggle('active', type === 'videos');
     contentTypeShorts.classList.toggle('active', type === 'shorts');
     contentTypeLives.classList.toggle('active', type === 'lives');
+
+    // Update ARIA
+    updateContentTypeAria(type);
 
     // Clear results when switching type
     searchResults = [];
@@ -603,6 +687,12 @@ function clearFilters() {
 async function performSearch() {
     const query = searchInput.value.trim();
 
+    // DEBUG
+    console.log('=== DEBUG performSearch ===');
+    console.log('contentType:', contentType);
+    console.log('searchType:', searchType);
+    console.log('query:', query);
+
     // For keyword search, require a query
     if (searchType === 'keyword' && !query) {
         showStatus('Digite uma palavra-chave para buscar', 'error');
@@ -662,15 +752,20 @@ async function performSearch() {
             });
         }
 
+        console.log('endpoint used:', endpoint);
+
         let data = await response.json();
+        console.log('data.videos.length BEFORE filter:', data.videos.length);
 
         // If keyword search, filter by title
         if (searchType === 'keyword' && query) {
             const queryLower = query.toLowerCase();
+            console.log('Filtering by:', queryLower);
             data.videos = data.videos.filter(v =>
                 v.title.toLowerCase().includes(queryLower)
             );
             data.count = data.videos.length;
+            console.log('data.videos.length AFTER filter:', data.videos.length);
         }
 
         if (data.error) {
@@ -1098,9 +1193,25 @@ contentTypeVideos.addEventListener('click', () => setContentType('videos'));
 contentTypeShorts.addEventListener('click', () => setContentType('shorts'));
 contentTypeLives.addEventListener('click', () => setContentType('lives'));
 
-// Filters
-applyFiltersBtn.addEventListener('click', applyFilters);
-clearFiltersBtn.addEventListener('click', clearFilters);
+// Filters - Collapsible Toggle
+filtersToggle.addEventListener('click', toggleFilters);
+filtersToggle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleFilters();
+    }
+});
+
+// Filters - Apply and Clear
+applyFiltersBtn.addEventListener('click', () => {
+    applyFilters();
+    updateFilterBadge();
+});
+
+clearFiltersBtn.addEventListener('click', () => {
+    clearFilters();
+    updateFilterBadge();
+});
 
 // Duration input formatting (auto-add colon)
 filterDurationMin.addEventListener('input', formatDurationInput);
@@ -1115,4 +1226,25 @@ function formatDurationInput(e) {
     }
 
     e.target.value = value;
+}
+
+// ==================== ARIA & ACCESSIBILITY ====================
+
+// Update ARIA attributes on mode switch
+function updateModeTabsAria(activeMode) {
+    modeTabUrl.setAttribute('aria-selected', activeMode === 'url');
+    modeTabSearch.setAttribute('aria-selected', activeMode === 'search');
+}
+
+// Update content type tabs ARIA
+function updateContentTypeAria(activeType) {
+    contentTypeVideos.setAttribute('aria-selected', activeType === 'videos');
+    contentTypeShorts.setAttribute('aria-selected', activeType === 'shorts');
+    contentTypeLives.setAttribute('aria-selected', activeType === 'lives');
+}
+
+// Update search type buttons ARIA
+function updateSearchTypeAria(activeType) {
+    searchTypeAll.setAttribute('aria-pressed', activeType === 'all');
+    searchTypeKeyword.setAttribute('aria-pressed', activeType === 'keyword');
 }

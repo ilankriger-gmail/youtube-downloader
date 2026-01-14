@@ -3,153 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Baixe videos do YouTube, TikTok e Instagram com facilidade">
+    <meta name="theme-color" content="#0D0D12">
     <title>Video Downloader - YouTube, TikTok, Instagram</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://i.ytimg.com">
 </head>
 <body>
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container" role="region" aria-label="Notificacoes" aria-live="polite"></div>
+
     <div class="container">
         <header>
             <h1>Video Downloader</h1>
-            <p class="subtitle">YouTube | TikTok | Instagram</p>
+            <p class="subtitle">YouTube <span>•</span> TikTok <span>•</span> Instagram</p>
         </header>
 
-        <!-- Mode Tabs -->
-        <div class="mode-tabs">
-            <button id="modeTabUrl" class="mode-tab active">
-                <span class="tab-icon">&#128279;</span> Links Diretos
+        <!-- Mode Navigation -->
+        <nav class="mode-tabs" role="tablist" aria-label="Modo de download">
+            <button
+                id="modeTabUrl"
+                class="mode-tab active"
+                role="tab"
+                aria-selected="true"
+                aria-controls="urlModeSection"
+            >
+                <span class="tab-icon" aria-hidden="true">&#128279;</span>
+                Links Diretos
             </button>
-            <button id="modeTabSearch" class="mode-tab">
-                <span class="tab-icon">&#128269;</span> Meu Canal
+            <button
+                id="modeTabSearch"
+                class="mode-tab"
+                role="tab"
+                aria-selected="false"
+                aria-controls="searchModeSection"
+            >
+                <span class="tab-icon" aria-hidden="true">&#128250;</span>
+                Meu Canal
             </button>
-        </div>
+        </nav>
 
         <main>
             <!-- URL Mode Section -->
-            <div id="urlModeSection" class="mode-section">
+            <section
+                id="urlModeSection"
+                class="mode-section"
+                role="tabpanel"
+                aria-labelledby="modeTabUrl"
+            >
                 <div class="input-section">
+                    <label for="urlInput" class="visually-hidden">Cole os links de video</label>
                     <textarea
                         id="urlInput"
                         placeholder="Cole os links aqui, um por linha...&#10;&#10;Exemplos:&#10;https://www.youtube.com/watch?v=xxxxx&#10;https://www.tiktok.com/@user/video/123&#10;https://www.instagram.com/reel/xxxxx"
                         rows="6"
+                        aria-describedby="urlInputHint"
                     ></textarea>
-                    <div class="quality-section">
-                        <label for="qualitySelect">Qualidade:</label>
-                        <select id="qualitySelect" class="quality-select">
-                            <option value="best" selected>Melhor Disponivel</option>
-                            <option value="1080">1080p Full HD</option>
-                            <option value="720">720p HD</option>
-                            <option value="480">480p SD</option>
-                            <option value="360">360p Baixa</option>
-                            <option value="audio">Apenas Audio (MP3)</option>
-                        </select>
+                    <p id="urlInputHint" class="visually-hidden">
+                        Suporta YouTube, TikTok e Instagram. Cole um link por linha.
+                    </p>
+
+                    <div class="controls-row">
+                        <div class="quality-section">
+                            <label for="qualitySelect">Qualidade:</label>
+                            <select id="qualitySelect" class="quality-select">
+                                <option value="best" selected>Melhor Disponivel</option>
+                                <option value="1080">1080p Full HD</option>
+                                <option value="720">720p HD</option>
+                                <option value="480">480p SD</option>
+                                <option value="360">360p Baixa</option>
+                                <option value="audio">Apenas Audio (MP3)</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div class="button-group">
                         <button id="validateBtn" class="btn btn-primary">
-                            <span class="btn-icon">&#128269;</span>
+                            <span class="btn-icon" aria-hidden="true">&#128269;</span>
                             Verificar Links
                         </button>
-                        <button id="downloadAllBtn" class="btn btn-success" disabled>
-                            <span class="btn-icon">&#11015;</span>
+                        <button id="downloadAllBtn" class="btn btn-success" disabled aria-disabled="true">
+                            <span class="btn-icon" aria-hidden="true">&#11015;</span>
                             Baixar Todos
                         </button>
                         <button id="openFolderBtn" class="btn btn-secondary">
-                            <span class="btn-icon">&#128193;</span>
+                            <span class="btn-icon" aria-hidden="true">&#128193;</span>
                             Abrir Pasta
                         </button>
                     </div>
                 </div>
 
-                <div id="videoList" class="video-list"></div>
-            </div>
+                <!-- Video List -->
+                <div id="videoList" class="video-list" role="list" aria-label="Videos verificados"></div>
+            </section>
 
-            <!-- Search Mode Section -->
-            <div id="searchModeSection" class="mode-section hidden">
+            <!-- Search/Channel Mode Section -->
+            <section
+                id="searchModeSection"
+                class="mode-section hidden"
+                role="tabpanel"
+                aria-labelledby="modeTabSearch"
+            >
                 <div class="input-section">
-                    <div class="channel-header">
+                    <!-- Channel Header -->
+                    <header class="channel-header">
                         <span class="channel-name">nextleveldj1</span>
-                    </div>
+                    </header>
 
                     <!-- Content Type Tabs -->
-                    <div class="content-type-tabs">
-                        <button id="contentTypeVideos" class="content-type-btn active" data-type="videos">
+                    <div class="content-type-tabs" role="tablist" aria-label="Tipo de conteudo">
+                        <button
+                            id="contentTypeVideos"
+                            class="content-type-btn active"
+                            role="tab"
+                            aria-selected="true"
+                            data-type="videos"
+                        >
                             Videos
                         </button>
-                        <button id="contentTypeShorts" class="content-type-btn" data-type="shorts">
+                        <button
+                            id="contentTypeShorts"
+                            class="content-type-btn"
+                            role="tab"
+                            aria-selected="false"
+                            data-type="shorts"
+                        >
                             Shorts
                         </button>
-                        <button id="contentTypeLives" class="content-type-btn" data-type="lives">
+                        <button
+                            id="contentTypeLives"
+                            class="content-type-btn"
+                            role="tab"
+                            aria-selected="false"
+                            data-type="lives"
+                        >
                             Lives
                         </button>
                     </div>
 
-                    <!-- Filters Panel -->
-                    <div class="filters-panel">
+                    <!-- Collapsible Filters Toggle -->
+                    <div
+                        id="filtersToggle"
+                        class="filters-toggle"
+                        role="button"
+                        aria-expanded="false"
+                        aria-controls="filtersPanel"
+                        tabindex="0"
+                    >
+                        <span class="filters-toggle-label">
+                            <span aria-hidden="true">&#9881;</span>
+                            Filtros
+                            <span id="filterCountBadge" class="filter-count-badge hidden" aria-label="filtros ativos">0</span>
+                        </span>
+                        <span class="filters-toggle-icon" aria-hidden="true">&#9660;</span>
+                    </div>
+
+                    <!-- Filters Panel (Collapsible) -->
+                    <div id="filtersPanel" class="filters-panel" aria-hidden="true">
                         <div class="filters-header">
-                            <span>Filtros</span>
-                            <button id="clearFiltersBtn" class="btn btn-small btn-link">Limpar</button>
+                            <span>Filtros Avancados</span>
+                            <button id="clearFiltersBtn" class="btn btn-link btn-small">Limpar Tudo</button>
                         </div>
                         <div class="filters-grid">
                             <div class="filter-group">
-                                <label>Views:</label>
-                                <div class="filter-range">
-                                    <input type="number" id="filterViewsMin" placeholder="Min" min="0">
-                                    <span>ate</span>
-                                    <input type="number" id="filterViewsMax" placeholder="Max" min="0">
+                                <label id="labelViews">Views:</label>
+                                <div class="filter-range" role="group" aria-labelledby="labelViews">
+                                    <input
+                                        type="number"
+                                        id="filterViewsMin"
+                                        placeholder="Min"
+                                        min="0"
+                                        aria-label="Views minimo"
+                                    >
+                                    <span aria-hidden="true">ate</span>
+                                    <input
+                                        type="number"
+                                        id="filterViewsMax"
+                                        placeholder="Max"
+                                        min="0"
+                                        aria-label="Views maximo"
+                                    >
                                 </div>
                             </div>
                             <div class="filter-group">
-                                <label>Duracao:</label>
-                                <div class="filter-range">
-                                    <input type="text" id="filterDurationMin" placeholder="0:00" pattern="[0-9]+:[0-5][0-9]">
-                                    <span>ate</span>
-                                    <input type="text" id="filterDurationMax" placeholder="99:59" pattern="[0-9]+:[0-5][0-9]">
+                                <label id="labelDuration">Duracao:</label>
+                                <div class="filter-range" role="group" aria-labelledby="labelDuration">
+                                    <input
+                                        type="text"
+                                        id="filterDurationMin"
+                                        placeholder="0:00"
+                                        pattern="[0-9]+:[0-5][0-9]"
+                                        aria-label="Duracao minima (mm:ss)"
+                                    >
+                                    <span aria-hidden="true">ate</span>
+                                    <input
+                                        type="text"
+                                        id="filterDurationMax"
+                                        placeholder="99:59"
+                                        pattern="[0-9]+:[0-5][0-9]"
+                                        aria-label="Duracao maxima (mm:ss)"
+                                    >
                                 </div>
                             </div>
                             <div class="filter-group">
-                                <label>Data:</label>
-                                <div class="filter-range">
-                                    <input type="date" id="filterDateStart">
-                                    <span>ate</span>
-                                    <input type="date" id="filterDateEnd">
+                                <label id="labelDate">Data:</label>
+                                <div class="filter-range" role="group" aria-labelledby="labelDate">
+                                    <input
+                                        type="date"
+                                        id="filterDateStart"
+                                        aria-label="Data inicial"
+                                    >
+                                    <span aria-hidden="true">ate</span>
+                                    <input
+                                        type="date"
+                                        id="filterDateEnd"
+                                        aria-label="Data final"
+                                    >
                                 </div>
                             </div>
                         </div>
-                        <button id="applyFiltersBtn" class="btn btn-primary btn-small">
-                            Aplicar Filtros
-                        </button>
+                        <div class="filters-actions">
+                            <button id="applyFiltersBtn" class="btn btn-accent btn-small">
+                                Aplicar Filtros
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="search-type-selector">
-                        <button id="searchTypeAll" class="search-type-btn active">
+                    <!-- Search Type Selector -->
+                    <div class="search-type-selector" role="group" aria-label="Tipo de busca">
+                        <button id="searchTypeAll" class="search-type-btn active" aria-pressed="true">
                             Listar Todos
                         </button>
-                        <button id="searchTypeKeyword" class="search-type-btn">
+                        <button id="searchTypeKeyword" class="search-type-btn" aria-pressed="false">
                             Buscar por Palavra
                         </button>
                     </div>
 
+                    <!-- Search Input -->
                     <div class="search-input-row">
-                        <input type="text"
-                               id="searchInput"
-                               class="search-input"
-                               placeholder="Digite para filtrar videos do canal..."
-                               autocomplete="off"
-                               disabled>
-                        <button id="searchBtn" class="btn btn-primary">
-                            <span class="btn-icon">&#128269;</span> Carregar
+                        <label for="searchInput" class="visually-hidden">Buscar videos</label>
+                        <input
+                            type="text"
+                            id="searchInput"
+                            class="search-input"
+                            placeholder="Digite para filtrar videos do canal..."
+                            autocomplete="off"
+                            disabled
+                            aria-disabled="true"
+                        >
+                        <button id="searchBtn" class="btn btn-accent">
+                            <span class="btn-icon" aria-hidden="true">&#128269;</span>
+                            <span id="searchBtnText">Carregar</span>
                         </button>
                     </div>
 
+                    <!-- Sort & Quality Controls -->
                     <div class="search-controls">
                         <div class="sort-section">
-                            <label for="sortBySelect">Ordenar por:</label>
+                            <label for="sortBySelect">Ordenar:</label>
                             <select id="sortBySelect" class="sort-select">
-                                <option value="views-desc" selected>Views (maior primeiro)</option>
-                                <option value="views-asc">Views (menor primeiro)</option>
-                                <option value="duration-desc">Duracao (maior primeiro)</option>
-                                <option value="duration-asc">Duracao (menor primeiro)</option>
-                                <option value="date-desc">Data (mais recente)</option>
-                                <option value="date-asc">Data (mais antigo)</option>
+                                <option value="views-desc" selected>Views (maior)</option>
+                                <option value="views-asc">Views (menor)</option>
+                                <option value="duration-desc">Duracao (maior)</option>
+                                <option value="duration-asc">Duracao (menor)</option>
+                                <option value="date-desc">Mais recente</option>
+                                <option value="date-asc">Mais antigo</option>
                             </select>
                         </div>
 
@@ -165,33 +284,79 @@
                         </div>
                     </div>
 
+                    <!-- Selection Controls -->
                     <div class="selection-controls">
                         <div class="selection-buttons">
-                            <button id="selectTop5Btn" class="btn btn-selection btn-top5" disabled>
-                                <span class="btn-icon">&#9650;</span> TOP 5
+                            <button
+                                id="selectTop5Btn"
+                                class="btn btn-selection btn-top5"
+                                disabled
+                                aria-disabled="true"
+                            >
+                                <span class="btn-icon" aria-hidden="true">&#9650;</span>
+                                TOP 5
                             </button>
-                            <button id="selectBottom5Btn" class="btn btn-selection btn-bottom5" disabled>
-                                <span class="btn-icon">&#9660;</span> BOTTOM 5
+                            <button
+                                id="selectBottom5Btn"
+                                class="btn btn-selection btn-bottom5"
+                                disabled
+                                aria-disabled="true"
+                            >
+                                <span class="btn-icon" aria-hidden="true">&#9660;</span>
+                                BOTTOM 5
                             </button>
-                            <button id="clearSelectionBtn" class="btn btn-secondary btn-small" disabled>
-                                <span class="btn-icon">&#10005;</span> Limpar
+                            <button
+                                id="clearSelectionBtn"
+                                class="btn btn-secondary btn-small"
+                                disabled
+                                aria-disabled="true"
+                            >
+                                <span class="btn-icon" aria-hidden="true">&#10005;</span>
+                                Limpar
                             </button>
                         </div>
                         <div class="selection-info">
-                            <span id="selectionCount">0 selecionado(s)</span>
-                            <button id="downloadSelectedBtn" class="btn btn-success" disabled>
-                                <span class="btn-icon">&#11015;</span> Baixar Selecionados
+                            <span id="selectionCount" role="status" aria-live="polite">0 selecionado(s)</span>
+                            <button
+                                id="downloadSelectedBtn"
+                                class="btn btn-success"
+                                disabled
+                                aria-disabled="true"
+                            >
+                                <span class="btn-icon" aria-hidden="true">&#11015;</span>
+                                Baixar Selecionados
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div id="searchResults" class="search-results"></div>
-            </div>
+                <!-- Search Results -->
+                <div
+                    id="searchResults"
+                    class="search-results"
+                    role="list"
+                    aria-label="Resultados da busca"
+                ></div>
+            </section>
 
-            <div id="statusMessage" class="status-message hidden"></div>
+            <!-- Status Message (Legacy Support) -->
+            <div
+                id="statusMessage"
+                class="status-message hidden"
+                role="alert"
+                aria-live="assertive"
+            ></div>
 
-            <div id="overallProgress" class="overall-progress hidden">
+            <!-- Progress Bar -->
+            <div
+                id="overallProgress"
+                class="overall-progress hidden"
+                role="progressbar"
+                aria-valuenow="0"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-label="Progresso do download"
+            >
                 <div class="progress-header">
                     <span>Progresso Geral</span>
                     <span id="overallProgressText">0/0</span>
