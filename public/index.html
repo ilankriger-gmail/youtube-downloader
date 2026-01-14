@@ -64,9 +64,9 @@
         <nav class="mode-tabs" role="tablist" aria-label="Modo de download">
             <button
                 id="modeTabUrl"
-                class="mode-tab active"
+                class="mode-tab"
                 role="tab"
-                aria-selected="true"
+                aria-selected="false"
                 aria-controls="urlModeSection"
             >
                 <span class="tab-icon" aria-hidden="true">&#128279;</span>
@@ -74,9 +74,9 @@
             </button>
             <button
                 id="modeTabSearch"
-                class="mode-tab"
+                class="mode-tab active"
                 role="tab"
-                aria-selected="false"
+                aria-selected="true"
                 aria-controls="searchModeSection"
             >
                 <span class="tab-icon" aria-hidden="true">&#128250;</span>
@@ -107,7 +107,7 @@
             <!-- URL Mode Section -->
             <section
                 id="urlModeSection"
-                class="mode-section"
+                class="mode-section hidden"
                 role="tabpanel"
                 aria-labelledby="modeTabUrl"
             >
@@ -160,7 +160,7 @@
             <!-- Search/Channel Mode Section -->
             <section
                 id="searchModeSection"
-                class="mode-section hidden"
+                class="mode-section"
                 role="tabpanel"
                 aria-labelledby="modeTabSearch"
             >
@@ -174,18 +174,18 @@
                     <div class="content-type-tabs" role="tablist" aria-label="Tipo de conteudo">
                         <button
                             id="contentTypeVideos"
-                            class="content-type-btn active"
+                            class="content-type-btn"
                             role="tab"
-                            aria-selected="true"
+                            aria-selected="false"
                             data-type="videos"
                         >
                             Videos
                         </button>
                         <button
                             id="contentTypeShorts"
-                            class="content-type-btn"
+                            class="content-type-btn active"
                             role="tab"
-                            aria-selected="false"
+                            aria-selected="true"
                             data-type="shorts"
                         >
                             Shorts
