@@ -1,4 +1,12 @@
-// DOM Elements - URL Mode
+// DOM Elements - Platform Tabs
+const platformYoutube = document.getElementById('platformYoutube');
+const platformInstagram = document.getElementById('platformInstagram');
+const platformTiktok = document.getElementById('platformTiktok');
+const youtubePanel = document.getElementById('youtubePanel');
+const instagramPanel = document.getElementById('instagramPanel');
+const tiktokPanel = document.getElementById('tiktokPanel');
+
+// DOM Elements - URL Mode (YouTube)
 const urlInput = document.getElementById('urlInput');
 const validateBtn = document.getElementById('validateBtn');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
@@ -6,7 +14,54 @@ const openFolderBtn = document.getElementById('openFolderBtn');
 const qualitySelect = document.getElementById('qualitySelect');
 const videoList = document.getElementById('videoList');
 
-// DOM Elements - Search Mode
+// DOM Elements - Instagram
+const igUrlInput = document.getElementById('igUrlInput');
+const igValidateBtn = document.getElementById('igValidateBtn');
+const igDownloadAllBtn = document.getElementById('igDownloadAllBtn');
+const igOpenFolderBtn = document.getElementById('igOpenFolderBtn');
+const igQualitySelect = document.getElementById('igQualitySelect');
+const igVideoList = document.getElementById('igVideoList');
+const igModeTabUrl = document.getElementById('igModeTabUrl');
+const igModeTabProfile = document.getElementById('igModeTabProfile');
+const igUrlModeSection = document.getElementById('igUrlModeSection');
+const igProfileModeSection = document.getElementById('igProfileModeSection');
+const igProfileInput = document.getElementById('igProfileInput');
+const igLoadProfileBtn = document.getElementById('igLoadProfileBtn');
+const igContentTypePosts = document.getElementById('igContentTypePosts');
+const igContentTypeReels = document.getElementById('igContentTypeReels');
+const igContentTypeStories = document.getElementById('igContentTypeStories');
+const igSortBySelect = document.getElementById('igSortBySelect');
+const igProfileQualitySelect = document.getElementById('igProfileQualitySelect');
+const igSelectTop5Btn = document.getElementById('igSelectTop5Btn');
+const igSelectBottom5Btn = document.getElementById('igSelectBottom5Btn');
+const igClearSelectionBtn = document.getElementById('igClearSelectionBtn');
+const igDownloadSelectedBtn = document.getElementById('igDownloadSelectedBtn');
+const igSelectionCount = document.getElementById('igSelectionCount');
+const igProfileResults = document.getElementById('igProfileResults');
+
+// DOM Elements - TikTok
+const tkUrlInput = document.getElementById('tkUrlInput');
+const tkValidateBtn = document.getElementById('tkValidateBtn');
+const tkDownloadAllBtn = document.getElementById('tkDownloadAllBtn');
+const tkOpenFolderBtn = document.getElementById('tkOpenFolderBtn');
+const tkQualitySelect = document.getElementById('tkQualitySelect');
+const tkVideoList = document.getElementById('tkVideoList');
+const tkModeTabUrl = document.getElementById('tkModeTabUrl');
+const tkModeTabProfile = document.getElementById('tkModeTabProfile');
+const tkUrlModeSection = document.getElementById('tkUrlModeSection');
+const tkProfileModeSection = document.getElementById('tkProfileModeSection');
+const tkProfileInput = document.getElementById('tkProfileInput');
+const tkLoadProfileBtn = document.getElementById('tkLoadProfileBtn');
+const tkSortBySelect = document.getElementById('tkSortBySelect');
+const tkProfileQualitySelect = document.getElementById('tkProfileQualitySelect');
+const tkSelectTop5Btn = document.getElementById('tkSelectTop5Btn');
+const tkSelectBottom5Btn = document.getElementById('tkSelectBottom5Btn');
+const tkClearSelectionBtn = document.getElementById('tkClearSelectionBtn');
+const tkDownloadSelectedBtn = document.getElementById('tkDownloadSelectedBtn');
+const tkSelectionCount = document.getElementById('tkSelectionCount');
+const tkProfileResults = document.getElementById('tkProfileResults');
+
+// DOM Elements - Search Mode (YouTube)
 const modeTabUrl = document.getElementById('modeTabUrl');
 const modeTabSearch = document.getElementById('modeTabSearch');
 const urlModeSection = document.getElementById('urlModeSection');
@@ -49,11 +104,39 @@ const overallProgressBar = document.getElementById('overallProgressBar');
 const overallProgressText = document.getElementById('overallProgressText');
 const toastContainer = document.getElementById('toastContainer');
 
-// State - URL Mode
+// State - Platform
+let currentPlatform = 'youtube'; // 'youtube' | 'instagram' | 'tiktok'
+
+// State - URL Mode (YouTube)
 let validatedVideos = [];
 let videoPrefixes = {};
 
-// State - Search Mode
+// State - Instagram
+let igValidatedVideos = [];
+let igVideoPrefixes = {};
+let igCurrentMode = 'url'; // 'url' | 'profile'
+let igContentType = 'reels'; // 'posts' | 'reels' | 'stories'
+let igProfileResults_data = [];
+let igUnfilteredResults = [];
+let igSelectedVideos = new Set();
+let igCurrentSortField = 'views';
+let igCurrentSortOrder = 'desc';
+let igTop5Ids = new Set();
+let igBottom5Ids = new Set();
+
+// State - TikTok
+let tkValidatedVideos = [];
+let tkVideoPrefixes = {};
+let tkCurrentMode = 'url'; // 'url' | 'profile'
+let tkProfileResults_data = [];
+let tkUnfilteredResults = [];
+let tkSelectedVideos = new Set();
+let tkCurrentSortField = 'views';
+let tkCurrentSortOrder = 'desc';
+let tkTop5Ids = new Set();
+let tkBottom5Ids = new Set();
+
+// State - Search Mode (YouTube)
 let searchResults = [];
 let unfilteredResults = []; // Original results before filtering
 let selectedVideos = new Set();
