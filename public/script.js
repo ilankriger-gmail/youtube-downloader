@@ -647,15 +647,31 @@ async function performSearch() {
                 body: JSON.stringify({ limit: 500 })
             });
         } else {
-            // Search by keyword in channel (for now, only videos support keyword search)
-            response = await fetch('/api/search', {
+            // Search by keyword - fetch all from selected type and filter locally
+            const endpoints = {
+                'videos': '/api/channel-videos',
+                'shorts': '/api/channel-shorts',
+                'lives': '/api/channel-lives'
+            };
+            endpoint = endpoints[contentType];
+
+            response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query, limit: 100, channelOnly: true })
+                body: JSON.stringify({ limit: 500 })
             });
         }
 
-        const data = await response.json();
+        let data = await response.json();
+
+        // If keyword search, filter by title
+        if (searchType === 'keyword' && query) {
+            const queryLower = query.toLowerCase();
+            data.videos = data.videos.filter(v =>
+                v.title.toLowerCase().includes(queryLower)
+            );
+            data.count = data.videos.length;
+        }
 
         if (data.error) {
             showStatus(data.error, 'error');
