@@ -70,6 +70,7 @@ async function getVideoInfo(url) {
             '--dump-json',
             '--no-download',
             '--no-warnings',
+            '--extractor-args', 'youtube:lang=pt-BR',
             url
         ]);
 
@@ -133,6 +134,7 @@ async function searchYouTube(query, limit = 100) {
             '--no-download',
             '--no-warnings',
             '--ignore-errors',
+            '--extractor-args', 'youtube:lang=pt-BR',
             searchQuery
         ]);
 
@@ -299,6 +301,7 @@ async function getChannelContent(contentType = 'videos', limit = 100) {
             '--no-download',
             '--no-warnings',
             '--ignore-errors',
+            '--extractor-args', 'youtube:lang=pt-BR',
             '--playlist-end', String(limit),
             channelUrl
         ]);
