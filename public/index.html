@@ -3,48 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Downloader</title>
+    <title>Video Downloader - YouTube, TikTok, Instagram</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>YouTube Downloader</h1>
-            <p class="subtitle">Cole seus links do YouTube abaixo</p>
+            <h1>Video Downloader</h1>
+            <p class="subtitle">YouTube | TikTok | Instagram</p>
         </header>
 
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+            <button id="modeTabUrl" class="mode-tab active">
+                <span class="tab-icon">&#128279;</span> Links Diretos
+            </button>
+            <button id="modeTabSearch" class="mode-tab">
+                <span class="tab-icon">&#128269;</span> Buscar no YouTube
+            </button>
+        </div>
+
         <main>
-            <div class="input-section">
-                <textarea
-                    id="urlInput"
-                    placeholder="Cole os links do YouTube aqui, um por linha...&#10;&#10;Exemplo:&#10;https://www.youtube.com/watch?v=xxxxx&#10;https://youtu.be/xxxxx"
-                    rows="6"
-                ></textarea>
-                <div class="quality-section">
-                    <label for="qualitySelect">Qualidade:</label>
-                    <select id="qualitySelect" class="quality-select">
-                        <option value="best" selected>Melhor Disponivel</option>
-                        <option value="1080">1080p Full HD</option>
-                        <option value="720">720p HD</option>
-                        <option value="480">480p SD</option>
-                        <option value="360">360p Baixa</option>
-                        <option value="audio">Apenas Audio (MP3)</option>
-                    </select>
+            <!-- URL Mode Section -->
+            <div id="urlModeSection" class="mode-section">
+                <div class="input-section">
+                    <textarea
+                        id="urlInput"
+                        placeholder="Cole os links aqui, um por linha...&#10;&#10;Exemplos:&#10;https://www.youtube.com/watch?v=xxxxx&#10;https://www.tiktok.com/@user/video/123&#10;https://www.instagram.com/reel/xxxxx"
+                        rows="6"
+                    ></textarea>
+                    <div class="quality-section">
+                        <label for="qualitySelect">Qualidade:</label>
+                        <select id="qualitySelect" class="quality-select">
+                            <option value="best" selected>Melhor Disponivel</option>
+                            <option value="1080">1080p Full HD</option>
+                            <option value="720">720p HD</option>
+                            <option value="480">480p SD</option>
+                            <option value="360">360p Baixa</option>
+                            <option value="audio">Apenas Audio (MP3)</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button id="validateBtn" class="btn btn-primary">
+                            <span class="btn-icon">&#128269;</span>
+                            Verificar Links
+                        </button>
+                        <button id="downloadAllBtn" class="btn btn-success" disabled>
+                            <span class="btn-icon">&#11015;</span>
+                            Baixar Todos
+                        </button>
+                        <button id="openFolderBtn" class="btn btn-secondary">
+                            <span class="btn-icon">&#128193;</span>
+                            Abrir Pasta
+                        </button>
+                    </div>
                 </div>
-                <div class="button-group">
-                    <button id="validateBtn" class="btn btn-primary">
-                        <span class="btn-icon">&#128269;</span>
-                        Verificar Links
-                    </button>
-                    <button id="downloadAllBtn" class="btn btn-success" disabled>
-                        <span class="btn-icon">&#11015;</span>
-                        Baixar Todos
-                    </button>
-                    <button id="openFolderBtn" class="btn btn-secondary">
-                        <span class="btn-icon">&#128193;</span>
-                        Abrir Pasta
-                    </button>
+
+                <div id="videoList" class="video-list"></div>
+            </div>
+
+            <!-- Search Mode Section -->
+            <div id="searchModeSection" class="mode-section hidden">
+                <div class="input-section">
+                    <div class="search-input-row">
+                        <input type="text"
+                               id="searchInput"
+                               class="search-input"
+                               placeholder="Digite palavras-chave para buscar no YouTube..."
+                               autocomplete="off">
+                        <button id="searchBtn" class="btn btn-primary">
+                            <span class="btn-icon">&#128269;</span> Buscar
+                        </button>
+                    </div>
+
+                    <div class="search-controls">
+                        <div class="sort-section">
+                            <label for="sortBySelect">Ordenar por:</label>
+                            <select id="sortBySelect" class="sort-select">
+                                <option value="views-desc" selected>Views (maior primeiro)</option>
+                                <option value="views-asc">Views (menor primeiro)</option>
+                                <option value="duration-desc">Duracao (maior primeiro)</option>
+                                <option value="duration-asc">Duracao (menor primeiro)</option>
+                                <option value="date-desc">Data (mais recente)</option>
+                                <option value="date-asc">Data (mais antigo)</option>
+                            </select>
+                        </div>
+
+                        <div class="quality-section">
+                            <label for="searchQualitySelect">Qualidade:</label>
+                            <select id="searchQualitySelect" class="quality-select">
+                                <option value="best" selected>Melhor Disponivel</option>
+                                <option value="1080">1080p Full HD</option>
+                                <option value="720">720p HD</option>
+                                <option value="480">480p SD</option>
+                                <option value="audio">Apenas Audio (MP3)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="selection-controls">
+                        <div class="selection-buttons">
+                            <button id="selectTop5Btn" class="btn btn-selection btn-top5" disabled>
+                                <span class="btn-icon">&#9650;</span> TOP 5
+                            </button>
+                            <button id="selectBottom5Btn" class="btn btn-selection btn-bottom5" disabled>
+                                <span class="btn-icon">&#9660;</span> BOTTOM 5
+                            </button>
+                            <button id="clearSelectionBtn" class="btn btn-secondary btn-small" disabled>
+                                <span class="btn-icon">&#10005;</span> Limpar
+                            </button>
+                        </div>
+                        <div class="selection-info">
+                            <span id="selectionCount">0 selecionado(s)</span>
+                            <button id="downloadSelectedBtn" class="btn btn-success" disabled>
+                                <span class="btn-icon">&#11015;</span> Baixar Selecionados
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                <div id="searchResults" class="search-results"></div>
             </div>
 
             <div id="statusMessage" class="status-message hidden"></div>
@@ -58,8 +136,6 @@
                     <div id="overallProgressBar" class="progress-fill"></div>
                 </div>
             </div>
-
-            <div id="videoList" class="video-list"></div>
         </main>
 
         <footer>

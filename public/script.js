@@ -1,18 +1,45 @@
-// DOM Elements
+// DOM Elements - URL Mode
 const urlInput = document.getElementById('urlInput');
 const validateBtn = document.getElementById('validateBtn');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const openFolderBtn = document.getElementById('openFolderBtn');
 const qualitySelect = document.getElementById('qualitySelect');
-const statusMessage = document.getElementById('statusMessage');
 const videoList = document.getElementById('videoList');
+
+// DOM Elements - Search Mode
+const modeTabUrl = document.getElementById('modeTabUrl');
+const modeTabSearch = document.getElementById('modeTabSearch');
+const urlModeSection = document.getElementById('urlModeSection');
+const searchModeSection = document.getElementById('searchModeSection');
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
+const searchQualitySelect = document.getElementById('searchQualitySelect');
+const sortBySelect = document.getElementById('sortBySelect');
+const selectTop5Btn = document.getElementById('selectTop5Btn');
+const selectBottom5Btn = document.getElementById('selectBottom5Btn');
+const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+const selectionCount = document.getElementById('selectionCount');
+const searchResultsContainer = document.getElementById('searchResults');
+
+// DOM Elements - Shared
+const statusMessage = document.getElementById('statusMessage');
 const overallProgress = document.getElementById('overallProgress');
 const overallProgressBar = document.getElementById('overallProgressBar');
 const overallProgressText = document.getElementById('overallProgressText');
 
-// State
+// State - URL Mode
 let validatedVideos = [];
 let videoPrefixes = {};
+
+// State - Search Mode
+let searchResults = [];
+let selectedVideos = new Set();
+let currentMode = 'url';
+let currentSortField = 'views';
+let currentSortOrder = 'desc';
+let top5Ids = new Set();
+let bottom5Ids = new Set();
 
 // Initialize
 checkDependencies();
@@ -42,7 +69,29 @@ async function checkDependencies() {
     }
 }
 
-// Show status message
+// ==================== MODE SWITCHING ====================
+
+function switchMode(mode) {
+    currentMode = mode;
+
+    if (mode === 'url') {
+        modeTabUrl.classList.add('active');
+        modeTabSearch.classList.remove('active');
+        urlModeSection.classList.remove('hidden');
+        searchModeSection.classList.add('hidden');
+    } else {
+        modeTabUrl.classList.remove('active');
+        modeTabSearch.classList.add('active');
+        urlModeSection.classList.add('hidden');
+        searchModeSection.classList.remove('hidden');
+    }
+
+    hideStatus();
+    overallProgress.classList.add('hidden');
+}
+
+// ==================== SHARED UTILITIES ====================
+
 function showStatus(message, type = 'info') {
     statusMessage.textContent = message;
     statusMessage.className = `status-message ${type}`;
@@ -55,20 +104,17 @@ function showStatus(message, type = 'info') {
     }
 }
 
-// Hide status message
 function hideStatus() {
     statusMessage.classList.add('hidden');
 }
 
-// Format duration
 function formatDuration(seconds) {
-    if (!seconds) return '';
+    if (!seconds) return '0:00';
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Format views
 function formatViews(views) {
     if (!views) return '0';
     if (views >= 1000000) {
@@ -79,7 +125,40 @@ function formatViews(views) {
     return views.toString();
 }
 
-// Create video item HTML
+function formatDate(dateStr) {
+    if (!dateStr || dateStr.length < 8) return '';
+    const year = dateStr.substring(0, 4);
+    const month = dateStr.substring(4, 6);
+    const day = dateStr.substring(6, 8);
+    return `${day}/${month}/${year}`;
+}
+
+function updateOverallProgress(completed, total) {
+    overallProgressText.textContent = `${completed}/${total}`;
+    const percent = total > 0 ? (completed / total) * 100 : 0;
+    overallProgressBar.style.width = `${percent}%`;
+}
+
+// ==================== URL MODE FUNCTIONS ====================
+
+function getPlatformIcon(platform) {
+    switch(platform) {
+        case 'youtube': return '&#9658;';
+        case 'tiktok': return '&#9834;';
+        case 'instagram': return '&#128247;';
+        default: return '&#128250;';
+    }
+}
+
+function getPlatformLabel(platform) {
+    switch(platform) {
+        case 'youtube': return 'YouTube';
+        case 'tiktok': return 'TikTok';
+        case 'instagram': return 'Instagram';
+        default: return 'Video';
+    }
+}
+
 function createVideoItem(video, index) {
     const item = document.createElement('div');
     item.className = 'video-item';
@@ -95,9 +174,12 @@ function createVideoItem(video, index) {
         `;
     } else {
         const viewsFormatted = formatViews(video.views);
+        const platformIcon = getPlatformIcon(video.platform);
+        const platformLabel = getPlatformLabel(video.platform);
         item.innerHTML = `
             <img class="video-thumbnail" src="${video.thumbnail || ''}" alt="" onerror="this.style.display='none'">
             <div class="video-info">
+                <div class="video-platform"><span class="platform-icon">${platformIcon}</span> ${platformLabel}</div>
                 <div class="video-title" title="${video.title}">${video.title}</div>
                 <div class="video-channel">${video.channel} ${video.duration ? '- ' + formatDuration(video.duration) : ''}</div>
                 <div class="video-views">${viewsFormatted} views</div>
@@ -115,7 +197,6 @@ function createVideoItem(video, index) {
     return item;
 }
 
-// Select prefix for a video
 function selectPrefix(index, prefix) {
     const container = document.querySelector(`.prefix-buttons[data-index="${index}"]`);
     if (!container) return;
@@ -136,14 +217,6 @@ function selectPrefix(index, prefix) {
     }
 }
 
-// Update overall progress bar
-function updateOverallProgress(completed, total) {
-    overallProgressText.textContent = `${completed}/${total}`;
-    const percent = total > 0 ? (completed / total) * 100 : 0;
-    overallProgressBar.style.width = `${percent}%`;
-}
-
-// Download individual video (returns promise)
 function downloadVideo(index, showButtonState = true) {
     return new Promise((resolve, reject) => {
         const video = validatedVideos[index];
@@ -155,7 +228,6 @@ function downloadVideo(index, showButtonState = true) {
         const quality = qualitySelect.value;
         const prefix = videoPrefixes[index] || '';
 
-        // Build download URL with views
         const params = new URLSearchParams({
             url: video.url,
             quality: quality,
@@ -164,7 +236,6 @@ function downloadVideo(index, showButtonState = true) {
             views: video.views || 0
         });
 
-        // Update button to show downloading state
         const item = document.getElementById(`video-${index}`);
         const btn = item.querySelector('.btn-download');
 
@@ -173,16 +244,12 @@ function downloadVideo(index, showButtonState = true) {
             btn.disabled = true;
         }
 
-        // Trigger download
-        const downloadUrl = `/api/download-file?${params.toString()}`;
-
-        fetch(downloadUrl)
+        fetch(`/api/download-file?${params.toString()}`)
             .then(response => {
                 if (!response.ok) throw new Error('Download failed');
                 return response.blob();
             })
             .then(blob => {
-                // Create download link
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -200,7 +267,6 @@ function downloadVideo(index, showButtonState = true) {
                 window.URL.revokeObjectURL(url);
                 a.remove();
 
-                // Update button
                 btn.innerHTML = '<span class="btn-icon">&#10003;</span> Concluido';
                 btn.classList.add('btn-completed');
                 btn.disabled = false;
@@ -212,13 +278,11 @@ function downloadVideo(index, showButtonState = true) {
                 btn.innerHTML = '<span class="btn-icon">&#10007;</span> Erro';
                 btn.classList.add('btn-error');
                 btn.disabled = false;
-
                 resolve(false);
             });
     });
 }
 
-// Download all videos sequentially
 async function downloadAllVideos() {
     const validIndices = [];
     validatedVideos.forEach((video, index) => {
@@ -232,38 +296,29 @@ async function downloadAllVideos() {
         return;
     }
 
-    // Disable controls
     downloadAllBtn.disabled = true;
     downloadAllBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
     validateBtn.disabled = true;
     urlInput.disabled = true;
     qualitySelect.disabled = true;
 
-    // Show progress bar
     overallProgress.classList.remove('hidden');
     updateOverallProgress(0, validIndices.length);
 
     let completedCount = 0;
 
-    // Download each video sequentially (wait for each to finish)
     for (let i = 0; i < validIndices.length; i++) {
         const index = validIndices[i];
-
         showStatus(`Baixando video ${i + 1} de ${validIndices.length}...`, 'info');
-
-        // Wait for this download to complete before starting next
-        const success = await downloadVideo(index, true);
-
+        await downloadVideo(index, true);
         completedCount++;
         updateOverallProgress(completedCount, validIndices.length);
 
-        // Small delay between downloads
         if (i < validIndices.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
 
-    // Re-enable controls
     downloadAllBtn.disabled = false;
     downloadAllBtn.innerHTML = '<span class="btn-icon">&#11015;</span> Baixar Todos';
     validateBtn.disabled = false;
@@ -273,12 +328,11 @@ async function downloadAllVideos() {
     showStatus(`${completedCount} download(s) concluido(s)!`, 'success');
 }
 
-// Validate URLs
 async function validateUrls() {
     const text = urlInput.value.trim();
 
     if (!text) {
-        showStatus('Cole pelo menos um link do YouTube', 'error');
+        showStatus('Cole pelo menos um link (YouTube, TikTok ou Instagram)', 'error');
         return;
     }
 
@@ -317,7 +371,6 @@ async function validateUrls() {
         validatedVideos.forEach((video, index) => {
             const item = createVideoItem(video, index);
             videoList.appendChild(item);
-            // Set "Normal" as default prefix for valid videos
             if (video.valid) {
                 videoPrefixes[index] = 'Normal';
             }
@@ -340,12 +393,10 @@ async function validateUrls() {
     }
 }
 
-// Open downloads folder
 async function openFolder() {
     try {
         const response = await fetch('/api/open-folder');
         const data = await response.json();
-
         if (!data.success) {
             showStatus('Erro ao abrir pasta', 'error');
         }
@@ -354,7 +405,398 @@ async function openFolder() {
     }
 }
 
-// Event Listeners
+// ==================== SEARCH MODE FUNCTIONS ====================
+
+async function performSearch() {
+    const query = searchInput.value.trim();
+
+    if (!query) {
+        showStatus('Digite uma palavra-chave para buscar', 'error');
+        return;
+    }
+
+    searchBtn.disabled = true;
+    searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Buscando...';
+    searchResultsContainer.innerHTML = '<div class="loading">Buscando 100 videos no YouTube</div>';
+    selectedVideos.clear();
+    updateSelectionCount();
+    disableSelectionButtons();
+
+    try {
+        const response = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, limit: 100 })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            showStatus(data.error, 'error');
+            searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro na busca</p><p class="hint">${data.error}</p></div>`;
+            return;
+        }
+
+        searchResults = data.videos;
+
+        if (searchResults.length === 0) {
+            searchResultsContainer.innerHTML = `<div class="no-results"><p>Nenhum video encontrado para "${query}"</p><p class="hint">Tente outras palavras-chave</p></div>`;
+            showStatus('Nenhum resultado encontrado', 'error');
+            return;
+        }
+
+        // Calculate TOP 5 and BOTTOM 5 by views
+        calculateTopBottom();
+
+        // Sort by views (highest first) by default
+        sortSearchResults('views', 'desc');
+
+        enableSelectionButtons();
+        showStatus(`${data.count} videos encontrados para "${query}"`, 'success');
+
+    } catch (error) {
+        showStatus('Erro na busca: ' + error.message, 'error');
+        searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro na busca</p><p class="hint">${error.message}</p></div>`;
+    } finally {
+        searchBtn.disabled = false;
+        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
+    }
+}
+
+function calculateTopBottom() {
+    // Sort a copy by views to find top/bottom
+    const sortedByViews = [...searchResults].sort((a, b) => (b.views || 0) - (a.views || 0));
+    top5Ids = new Set(sortedByViews.slice(0, 5).map(v => v.id));
+    bottom5Ids = new Set(sortedByViews.slice(-5).map(v => v.id));
+}
+
+function sortSearchResults(field, order) {
+    currentSortField = field;
+    currentSortOrder = order;
+
+    searchResults.sort((a, b) => {
+        let valueA, valueB;
+
+        switch(field) {
+            case 'views':
+                valueA = a.views || 0;
+                valueB = b.views || 0;
+                break;
+            case 'duration':
+                valueA = a.duration || 0;
+                valueB = b.duration || 0;
+                break;
+            case 'date':
+                valueA = a.uploadDate || '';
+                valueB = b.uploadDate || '';
+                break;
+            default:
+                valueA = a.views || 0;
+                valueB = b.views || 0;
+        }
+
+        if (order === 'asc') {
+            return valueA > valueB ? 1 : -1;
+        } else {
+            return valueA < valueB ? 1 : -1;
+        }
+    });
+
+    renderSearchResults();
+}
+
+function renderSearchResults() {
+    searchResultsContainer.innerHTML = '';
+
+    if (searchResults.length === 0) {
+        return;
+    }
+
+    searchResults.forEach((video, index) => {
+        const item = createSearchResultItem(video, index);
+        searchResultsContainer.appendChild(item);
+    });
+
+    updateDownloadSelectedState();
+}
+
+function createSearchResultItem(video, index) {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.id = `search-${index}`;
+
+    const isTop5 = top5Ids.has(video.id);
+    const isBottom5 = bottom5Ids.has(video.id);
+    const isSelected = selectedVideos.has(index);
+
+    if (isSelected) {
+        item.classList.add('selected');
+    }
+
+    // Get ranking position
+    let badgeHtml = '';
+    if (isTop5) {
+        const sortedByViews = [...searchResults].sort((a, b) => (b.views || 0) - (a.views || 0));
+        const rank = sortedByViews.findIndex(v => v.id === video.id) + 1;
+        badgeHtml = `<span class="badge badge-top">TOP ${rank}</span>`;
+    } else if (isBottom5) {
+        const sortedByViews = [...searchResults].sort((a, b) => (b.views || 0) - (a.views || 0));
+        const rank = searchResults.length - sortedByViews.findIndex(v => v.id === video.id);
+        badgeHtml = `<span class="badge badge-bottom">BTM ${rank}</span>`;
+    }
+
+    const dateFormatted = formatDate(video.uploadDate);
+
+    item.innerHTML = `
+        <input type="checkbox" class="result-checkbox"
+               data-index="${index}"
+               ${isSelected ? 'checked' : ''}
+               onchange="toggleVideoSelection(${index})">
+        <img class="result-thumbnail"
+             src="${video.thumbnail}"
+             alt=""
+             onerror="this.style.background='var(--bg-primary)'">
+        <div class="result-info">
+            <div class="result-title-row">
+                ${badgeHtml}
+                <span class="result-title" title="${video.title}">${video.title}</span>
+            </div>
+            <div class="result-meta">
+                <span class="result-channel">${video.channel}</span>
+                <span class="result-separator">|</span>
+                <span class="result-views">${formatViews(video.views)} views</span>
+                <span class="result-separator">|</span>
+                <span class="result-duration">${formatDuration(video.duration)}</span>
+                ${dateFormatted ? `<span class="result-separator">|</span><span class="result-date">${dateFormatted}</span>` : ''}
+            </div>
+        </div>
+    `;
+
+    // Click anywhere to toggle selection (except checkbox)
+    item.addEventListener('click', (e) => {
+        if (e.target.type !== 'checkbox') {
+            toggleVideoSelection(index);
+        }
+    });
+
+    return item;
+}
+
+function toggleVideoSelection(index) {
+    if (selectedVideos.has(index)) {
+        selectedVideos.delete(index);
+    } else {
+        selectedVideos.add(index);
+    }
+
+    const item = document.getElementById(`search-${index}`);
+    const checkbox = item.querySelector('.result-checkbox');
+
+    if (selectedVideos.has(index)) {
+        item.classList.add('selected');
+        checkbox.checked = true;
+    } else {
+        item.classList.remove('selected');
+        checkbox.checked = false;
+    }
+
+    updateSelectionCount();
+    updateDownloadSelectedState();
+}
+
+function updateSelectionCount() {
+    selectionCount.textContent = `${selectedVideos.size} selecionado(s)`;
+}
+
+function updateDownloadSelectedState() {
+    downloadSelectedBtn.disabled = selectedVideos.size === 0;
+    clearSelectionBtn.disabled = selectedVideos.size === 0;
+}
+
+function enableSelectionButtons() {
+    selectTop5Btn.disabled = false;
+    selectBottom5Btn.disabled = false;
+}
+
+function disableSelectionButtons() {
+    selectTop5Btn.disabled = true;
+    selectBottom5Btn.disabled = true;
+    clearSelectionBtn.disabled = true;
+    downloadSelectedBtn.disabled = true;
+}
+
+function selectTop5() {
+    // Find indices of top 5 videos in current results array
+    const sortedByViews = [...searchResults]
+        .map((v, i) => ({ ...v, originalIndex: i }))
+        .sort((a, b) => (b.views || 0) - (a.views || 0));
+
+    const top5Indices = sortedByViews.slice(0, 5).map(v => v.originalIndex);
+
+    top5Indices.forEach(index => {
+        if (!selectedVideos.has(index)) {
+            selectedVideos.add(index);
+            const item = document.getElementById(`search-${index}`);
+            if (item) {
+                item.classList.add('selected');
+                const checkbox = item.querySelector('.result-checkbox');
+                if (checkbox) checkbox.checked = true;
+            }
+        }
+    });
+
+    updateSelectionCount();
+    updateDownloadSelectedState();
+}
+
+function selectBottom5() {
+    // Find indices of bottom 5 videos in current results array
+    const sortedByViews = [...searchResults]
+        .map((v, i) => ({ ...v, originalIndex: i }))
+        .sort((a, b) => (b.views || 0) - (a.views || 0));
+
+    const bottom5Indices = sortedByViews.slice(-5).map(v => v.originalIndex);
+
+    bottom5Indices.forEach(index => {
+        if (!selectedVideos.has(index)) {
+            selectedVideos.add(index);
+            const item = document.getElementById(`search-${index}`);
+            if (item) {
+                item.classList.add('selected');
+                const checkbox = item.querySelector('.result-checkbox');
+                if (checkbox) checkbox.checked = true;
+            }
+        }
+    });
+
+    updateSelectionCount();
+    updateDownloadSelectedState();
+}
+
+function clearSelection() {
+    selectedVideos.forEach(index => {
+        const item = document.getElementById(`search-${index}`);
+        if (item) {
+            item.classList.remove('selected');
+            const checkbox = item.querySelector('.result-checkbox');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    selectedVideos.clear();
+    updateSelectionCount();
+    updateDownloadSelectedState();
+}
+
+async function downloadSelectedVideos() {
+    if (selectedVideos.size === 0) {
+        showStatus('Selecione pelo menos um video', 'error');
+        return;
+    }
+
+    const indices = Array.from(selectedVideos);
+
+    // Disable controls
+    downloadSelectedBtn.disabled = true;
+    downloadSelectedBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
+    searchBtn.disabled = true;
+    selectTop5Btn.disabled = true;
+    selectBottom5Btn.disabled = true;
+    clearSelectionBtn.disabled = true;
+    searchQualitySelect.disabled = true;
+    sortBySelect.disabled = true;
+
+    // Show progress
+    overallProgress.classList.remove('hidden');
+    updateOverallProgress(0, indices.length);
+
+    let completedCount = 0;
+
+    // Download sequentially
+    for (let i = 0; i < indices.length; i++) {
+        const index = indices[i];
+        const video = searchResults[index];
+
+        showStatus(`Baixando video ${i + 1} de ${indices.length}: ${video.title.substring(0, 50)}...`, 'info');
+
+        // Mark item as downloading
+        const item = document.getElementById(`search-${index}`);
+        item.classList.add('downloading');
+
+        try {
+            await downloadSearchVideo(video);
+            item.classList.remove('downloading');
+            item.classList.add('downloaded');
+        } catch (error) {
+            console.error('Download failed:', error);
+            item.classList.remove('downloading');
+            item.classList.add('download-error');
+        }
+
+        completedCount++;
+        updateOverallProgress(completedCount, indices.length);
+
+        // Delay between downloads
+        if (i < indices.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+
+    // Re-enable controls
+    downloadSelectedBtn.disabled = false;
+    downloadSelectedBtn.innerHTML = '<span class="btn-icon">&#11015;</span> Baixar Selecionados';
+    searchBtn.disabled = false;
+    selectTop5Btn.disabled = false;
+    selectBottom5Btn.disabled = false;
+    clearSelectionBtn.disabled = selectedVideos.size === 0;
+    searchQualitySelect.disabled = false;
+    sortBySelect.disabled = false;
+
+    showStatus(`${completedCount} download(s) concluido(s)!`, 'success');
+}
+
+function downloadSearchVideo(video) {
+    return new Promise((resolve, reject) => {
+        const quality = searchQualitySelect.value;
+
+        const params = new URLSearchParams({
+            url: video.url,
+            quality: quality,
+            prefix: '',
+            title: video.title,
+            views: video.views || 0
+        });
+
+        fetch(`/api/download-file?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Download failed');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const ext = quality === 'audio' ? 'mp3' : 'mp4';
+                const viewsFormatted = formatViews(video.views);
+                a.download = `${viewsFormatted} - ${video.title}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                resolve(true);
+            })
+            .catch(error => {
+                reject(error);
+            });
+    });
+}
+
+// ==================== EVENT LISTENERS ====================
+
+// Mode switching
+modeTabUrl.addEventListener('click', () => switchMode('url'));
+modeTabSearch.addEventListener('click', () => switchMode('search'));
+
+// URL Mode
 validateBtn.addEventListener('click', validateUrls);
 downloadAllBtn.addEventListener('click', downloadAllVideos);
 openFolderBtn.addEventListener('click', openFolder);
@@ -363,5 +805,24 @@ urlInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.ctrlKey) {
         e.preventDefault();
         validateUrls();
+    }
+});
+
+// Search Mode
+searchBtn.addEventListener('click', performSearch);
+selectTop5Btn.addEventListener('click', selectTop5);
+selectBottom5Btn.addEventListener('click', selectBottom5);
+clearSelectionBtn.addEventListener('click', clearSelection);
+downloadSelectedBtn.addEventListener('click', downloadSelectedVideos);
+
+sortBySelect.addEventListener('change', (e) => {
+    const [field, order] = e.target.value.split('-');
+    sortSearchResults(field, order);
+});
+
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        performSearch();
     }
 });

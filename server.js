@@ -35,15 +35,32 @@ app.use(express.json());
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Validate YouTube URL
-function isValidYouTubeUrl(url) {
+// Validate video URL (YouTube, TikTok, Instagram)
+function isValidVideoUrl(url) {
     const patterns = [
+        // YouTube
         /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=[\w-]+/,
         /^(https?:\/\/)?(www\.)?youtube\.com\/shorts\/[\w-]+/,
         /^(https?:\/\/)?youtu\.be\/[\w-]+/,
-        /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[\w-]+/
+        /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[\w-]+/,
+        // TikTok
+        /^(https?:\/\/)?(www\.)?tiktok\.com\/@[\w.-]+\/video\/\d+/,
+        /^(https?:\/\/)?(www\.)?tiktok\.com\/t\/[\w]+/,
+        /^(https?:\/\/)?vm\.tiktok\.com\/[\w]+/,
+        /^(https?:\/\/)?(www\.)?tiktok\.com\/@[\w.-]+/,
+        // Instagram
+        /^(https?:\/\/)?(www\.)?instagram\.com\/(p|reel|reels|tv)\/[\w-]+/,
+        /^(https?:\/\/)?(www\.)?instagram\.com\/stories\/[\w.-]+\/\d+/
     ];
     return patterns.some(pattern => pattern.test(url));
+}
+
+// Detect platform from URL
+function detectPlatform(url) {
+    if (/youtube\.com|youtu\.be/.test(url)) return 'youtube';
+    if (/tiktok\.com|vm\.tiktok\.com/.test(url)) return 'tiktok';
+    if (/instagram\.com/.test(url)) return 'instagram';
+    return 'unknown';
 }
 
 // Get video info using yt-dlp
@@ -71,14 +88,18 @@ async function getVideoInfo(url) {
             if (code === 0) {
                 try {
                     const info = JSON.parse(stdout);
+                    const viewCount = info.view_count || info.views || info.like_count || 0;
+                    const platform = detectPlatform(url);
+                    console.log(`[${platform.toUpperCase()}] "${info.title}" - Views: ${viewCount}`);
                     resolve({
                         valid: true,
                         url: url,
+                        platform: platform,
                         title: info.title || 'Unknown Title',
                         duration: info.duration || 0,
                         thumbnail: info.thumbnail || '',
-                        channel: info.channel || info.uploader || 'Unknown Channel',
-                        views: info.view_count || 0
+                        channel: info.channel || info.uploader || info.creator || 'Unknown',
+                        views: viewCount
                     });
                 } catch (e) {
                     reject(new Error('Failed to parse video info'));
@@ -99,6 +120,105 @@ function sanitizeFilename(filename) {
     return filename.replace(/[/\\?%*:|"<>]/g, '-').substring(0, 200);
 }
 
+// Search YouTube using yt-dlp
+async function searchYouTube(query, limit = 100) {
+    return new Promise((resolve, reject) => {
+        const searchQuery = `ytsearch${limit}:${query}`;
+
+        console.log(`[SEARCH] Searching YouTube for: "${query}" (limit: ${limit})`);
+
+        const ytdlp = spawn('yt-dlp', [
+            '--dump-json',
+            '--flat-playlist',
+            '--no-download',
+            '--no-warnings',
+            '--ignore-errors',
+            searchQuery
+        ]);
+
+        let stdout = '';
+        let stderr = '';
+
+        // Timeout after 90 seconds
+        const timeout = setTimeout(() => {
+            ytdlp.kill('SIGTERM');
+            reject(new Error('Search timeout - took too long'));
+        }, 90000);
+
+        ytdlp.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        ytdlp.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        ytdlp.on('close', (code) => {
+            clearTimeout(timeout);
+
+            if (code !== 0 && stdout.length === 0) {
+                reject(new Error(stderr || 'Search failed'));
+                return;
+            }
+
+            try {
+                const lines = stdout.trim().split('\n').filter(line => line.trim());
+                const videos = [];
+
+                for (const line of lines) {
+                    try {
+                        const info = JSON.parse(line);
+                        videos.push({
+                            id: info.id,
+                            url: info.url || `https://www.youtube.com/watch?v=${info.id}`,
+                            title: info.title || 'Unknown Title',
+                            channel: info.channel || info.uploader || 'Unknown',
+                            duration: info.duration || 0,
+                            views: info.view_count || 0,
+                            thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
+                            uploadDate: info.upload_date || '',
+                            platform: 'youtube'
+                        });
+                    } catch (parseError) {
+                        // Skip invalid lines
+                    }
+                }
+
+                console.log(`[SEARCH] Found ${videos.length} videos for "${query}"`);
+                resolve(videos);
+            } catch (error) {
+                reject(new Error('Failed to parse search results'));
+            }
+        });
+
+        ytdlp.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+        });
+    });
+}
+
+// YouTube search endpoint
+app.post('/api/search', async (req, res) => {
+    const { query, limit = 100 } = req.body;
+
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+        return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    try {
+        const results = await searchYouTube(query.trim(), Math.min(limit, 100));
+        res.json({
+            query: query.trim(),
+            count: results.length,
+            videos: results
+        });
+    } catch (error) {
+        console.error('[SEARCH] Error:', error.message);
+        res.status(500).json({ error: error.message || 'Search failed' });
+    }
+});
+
 // Endpoint to validate URLs and get video info
 app.post('/api/validate', async (req, res) => {
     const { urls } = req.body;
@@ -116,11 +236,11 @@ app.post('/api/validate', async (req, res) => {
             continue;
         }
 
-        if (!isValidYouTubeUrl(trimmedUrl)) {
+        if (!isValidVideoUrl(trimmedUrl)) {
             results.push({
                 url: trimmedUrl,
                 valid: false,
-                error: 'Invalid YouTube URL format'
+                error: 'URL invalida (use YouTube, TikTok ou Instagram)'
             });
             continue;
         }
@@ -197,7 +317,8 @@ app.get('/api/download-file', async (req, res) => {
     args.push('-o', tempFile);
     args.push(url);
 
-    console.log(`Starting download: ${filename}`);
+    console.log(`Starting download: ${filename} (views param: ${views})`);
+    console.log(`Download params - URL: ${url}, Quality: ${quality}, Prefix: ${prefix}, Title: ${title}, Views: ${views}`);
 
     const ytdlp = spawn('yt-dlp', args);
 
@@ -283,7 +404,8 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n========================================`);
-    console.log(`  YouTube Downloader Server`);
+    console.log(`  Video Downloader Server`);
+    console.log(`  YouTube | TikTok | Instagram`);
     console.log(`  Running at: http://localhost:${PORT}`);
     console.log(`  Environment: ${process.env.RAILWAY_ENVIRONMENT || 'local'}`);
     console.log(`========================================\n`);
