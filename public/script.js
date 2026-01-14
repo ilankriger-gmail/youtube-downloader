@@ -755,6 +755,17 @@ async function performSearch() {
         console.log('endpoint used:', endpoint);
 
         let data = await response.json();
+
+        // Check if response is OK or has error
+        if (!response.ok || data.error) {
+            throw new Error(data.error || 'Falha ao carregar conteudo');
+        }
+
+        // Check if data.videos exists
+        if (!data.videos) {
+            throw new Error('Resposta invalida do servidor');
+        }
+
         console.log('data.videos.length BEFORE filter:', data.videos.length);
 
         // If keyword search, filter by title
@@ -766,12 +777,6 @@ async function performSearch() {
             );
             data.count = data.videos.length;
             console.log('data.videos.length AFTER filter:', data.videos.length);
-        }
-
-        if (data.error) {
-            showStatus(data.error, 'error');
-            searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro</p><p class="hint">${data.error}</p></div>`;
-            return;
         }
 
         // Store both filtered and unfiltered results
