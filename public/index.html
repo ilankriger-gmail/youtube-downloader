@@ -796,6 +796,94 @@
                             </div>
                         </div>
 
+                        <!-- Collapsible Filters Toggle - TikTok -->
+                        <div
+                            id="tkFiltersToggle"
+                            class="filters-toggle"
+                            role="button"
+                            aria-expanded="false"
+                            aria-controls="tkFiltersPanel"
+                            tabindex="0"
+                        >
+                            <span class="filters-toggle-label">
+                                <span aria-hidden="true">&#9881;</span>
+                                Filtros Avancados
+                                <span id="tkFilterCountBadge" class="filter-count-badge hidden" aria-label="filtros ativos">0</span>
+                            </span>
+                            <span class="filters-toggle-icon" aria-hidden="true">&#9660;</span>
+                        </div>
+
+                        <!-- Filters Panel - TikTok -->
+                        <div id="tkFiltersPanel" class="filters-panel" aria-hidden="true">
+                            <div class="filters-header">
+                                <span>Filtros Avancados</span>
+                                <button id="tkClearFiltersBtn" class="btn btn-link btn-small">Limpar Tudo</button>
+                            </div>
+                            <div class="filters-grid">
+                                <div class="filter-group">
+                                    <label id="tkLabelViews">Views:</label>
+                                    <div class="filter-range" role="group" aria-labelledby="tkLabelViews">
+                                        <input
+                                            type="number"
+                                            id="tkFilterViewsMin"
+                                            placeholder="Min (ex: 1000)"
+                                            min="0"
+                                            aria-label="Views minimo"
+                                        >
+                                        <span aria-hidden="true">ate</span>
+                                        <input
+                                            type="number"
+                                            id="tkFilterViewsMax"
+                                            placeholder="Max"
+                                            min="0"
+                                            aria-label="Views maximo"
+                                        >
+                                    </div>
+                                </div>
+                                <div class="filter-group">
+                                    <label id="tkLabelDuration">Duracao:</label>
+                                    <div class="filter-range" role="group" aria-labelledby="tkLabelDuration">
+                                        <input
+                                            type="text"
+                                            id="tkFilterDurationMin"
+                                            placeholder="0:00"
+                                            pattern="[0-9]+:[0-5][0-9]"
+                                            aria-label="Duracao minima (mm:ss)"
+                                        >
+                                        <span aria-hidden="true">ate</span>
+                                        <input
+                                            type="text"
+                                            id="tkFilterDurationMax"
+                                            placeholder="99:59"
+                                            pattern="[0-9]+:[0-5][0-9]"
+                                            aria-label="Duracao maxima (mm:ss)"
+                                        >
+                                    </div>
+                                </div>
+                                <div class="filter-group">
+                                    <label id="tkLabelDateRange">Data:</label>
+                                    <div class="filter-range" role="group" aria-labelledby="tkLabelDateRange">
+                                        <input
+                                            type="date"
+                                            id="tkFilterDateStart"
+                                            aria-label="Data inicial"
+                                        >
+                                        <span aria-hidden="true">ate</span>
+                                        <input
+                                            type="date"
+                                            id="tkFilterDateEnd"
+                                            aria-label="Data final"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="filters-actions">
+                                <button id="tkApplyFiltersBtn" class="btn btn-tiktok btn-small">
+                                    Aplicar Filtros
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Sort & Quality Controls -->
                         <div class="search-controls">
                             <div class="sort-section">

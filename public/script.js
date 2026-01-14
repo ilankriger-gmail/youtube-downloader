@@ -64,6 +64,19 @@ const tkSearchTypeAll = document.getElementById('tkSearchTypeAll');
 const tkSearchTypeKeyword = document.getElementById('tkSearchTypeKeyword');
 const tkKeywordInput = document.getElementById('tkKeywordInput');
 
+// DOM Elements - TikTok Filters
+const tkFiltersToggle = document.getElementById('tkFiltersToggle');
+const tkFiltersPanel = document.getElementById('tkFiltersPanel');
+const tkFilterCountBadge = document.getElementById('tkFilterCountBadge');
+const tkFilterViewsMin = document.getElementById('tkFilterViewsMin');
+const tkFilterViewsMax = document.getElementById('tkFilterViewsMax');
+const tkFilterDurationMin = document.getElementById('tkFilterDurationMin');
+const tkFilterDurationMax = document.getElementById('tkFilterDurationMax');
+const tkFilterDateStart = document.getElementById('tkFilterDateStart');
+const tkFilterDateEnd = document.getElementById('tkFilterDateEnd');
+const tkApplyFiltersBtn = document.getElementById('tkApplyFiltersBtn');
+const tkClearFiltersBtn = document.getElementById('tkClearFiltersBtn');
+
 // DOM Elements - Quick Filters (YouTube)
 const quickFilterMonth = document.getElementById('quickFilterMonth');
 const quickFilterYear = document.getElementById('quickFilterYear');
@@ -707,19 +720,23 @@ function setSearchType(type) {
     searchType = type;
 
     if (type === 'all') {
-        searchTypeAll.classList.add('active');
-        searchTypeKeyword.classList.remove('active');
-        searchInput.disabled = true;
-        searchInput.setAttribute('aria-disabled', 'true');
-        searchInput.value = '';
-        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Carregar';
+        if (searchTypeAll) searchTypeAll.classList.add('active');
+        if (searchTypeKeyword) searchTypeKeyword.classList.remove('active');
+        if (searchInput) {
+            searchInput.disabled = true;
+            searchInput.setAttribute('aria-disabled', 'true');
+            searchInput.value = '';
+        }
+        if (searchBtn) searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Carregar';
     } else {
-        searchTypeAll.classList.remove('active');
-        searchTypeKeyword.classList.add('active');
-        searchInput.disabled = false;
-        searchInput.setAttribute('aria-disabled', 'false');
-        searchInput.focus();
-        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
+        if (searchTypeAll) searchTypeAll.classList.remove('active');
+        if (searchTypeKeyword) searchTypeKeyword.classList.add('active');
+        if (searchInput) {
+            searchInput.disabled = false;
+            searchInput.setAttribute('aria-disabled', 'false');
+            searchInput.focus();
+        }
+        if (searchBtn) searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
     }
 
     // Update ARIA
@@ -1458,8 +1475,8 @@ function updateContentTypeAria(activeType) {
 
 // Update search type buttons ARIA
 function updateSearchTypeAria(activeType) {
-    searchTypeAll.setAttribute('aria-pressed', activeType === 'all');
-    searchTypeKeyword.setAttribute('aria-pressed', activeType === 'keyword');
+    if (searchTypeAll) searchTypeAll.setAttribute('aria-pressed', activeType === 'all');
+    if (searchTypeKeyword) searchTypeKeyword.setAttribute('aria-pressed', activeType === 'keyword');
 }
 
 // ==================== INSTAGRAM FUNCTIONS ====================
@@ -2842,22 +2859,26 @@ function setIgSearchType(type) {
     igSearchType = type;
 
     if (type === 'all') {
-        igSearchTypeAll.classList.add('active');
-        igSearchTypeKeyword.classList.remove('active');
-        igSearchTypeAll.setAttribute('aria-pressed', 'true');
-        igSearchTypeKeyword.setAttribute('aria-pressed', 'false');
-        igKeywordInput.disabled = true;
-        igKeywordInput.setAttribute('aria-disabled', 'true');
-        igKeywordInput.value = '';
+        if (igSearchTypeAll) igSearchTypeAll.classList.add('active');
+        if (igSearchTypeKeyword) igSearchTypeKeyword.classList.remove('active');
+        if (igSearchTypeAll) igSearchTypeAll.setAttribute('aria-pressed', 'true');
+        if (igSearchTypeKeyword) igSearchTypeKeyword.setAttribute('aria-pressed', 'false');
+        if (igKeywordInput) {
+            igKeywordInput.disabled = true;
+            igKeywordInput.setAttribute('aria-disabled', 'true');
+            igKeywordInput.value = '';
+        }
         igKeyword = '';
     } else {
-        igSearchTypeAll.classList.remove('active');
-        igSearchTypeKeyword.classList.add('active');
-        igSearchTypeAll.setAttribute('aria-pressed', 'false');
-        igSearchTypeKeyword.setAttribute('aria-pressed', 'true');
-        igKeywordInput.disabled = false;
-        igKeywordInput.setAttribute('aria-disabled', 'false');
-        igKeywordInput.focus();
+        if (igSearchTypeAll) igSearchTypeAll.classList.remove('active');
+        if (igSearchTypeKeyword) igSearchTypeKeyword.classList.add('active');
+        if (igSearchTypeAll) igSearchTypeAll.setAttribute('aria-pressed', 'false');
+        if (igSearchTypeKeyword) igSearchTypeKeyword.setAttribute('aria-pressed', 'true');
+        if (igKeywordInput) {
+            igKeywordInput.disabled = false;
+            igKeywordInput.setAttribute('aria-disabled', 'false');
+            igKeywordInput.focus();
+        }
     }
 
     // Re-apply filters
@@ -2866,7 +2887,7 @@ function setIgSearchType(type) {
 
 // Handle Instagram keyword input
 function handleIgKeywordInput() {
-    igKeyword = igKeywordInput.value;
+    if (igKeywordInput) igKeyword = igKeywordInput.value;
     applyIgFilters();
 }
 
@@ -2884,7 +2905,7 @@ function applyTikTokQuickFilter(days) {
     applyTkFilters();
 }
 
-// Apply all TikTok filters (date + keyword)
+// Apply all TikTok filters (date + keyword + advanced)
 function applyTkFilters() {
     // If no results loaded yet, just store the preference
     if (tkUnfilteredResults.length === 0) {
@@ -2894,7 +2915,7 @@ function applyTkFilters() {
     // Start with all results
     let filtered = [...tkUnfilteredResults];
 
-    // Apply date filter
+    // Apply date filter (quick filter)
     if (tkQuickFilterDays > 0) {
         const cutoffDate = getDateDaysAgo(tkQuickFilterDays);
         filtered = filtered.filter(video => {
@@ -2912,6 +2933,33 @@ function applyTkFilters() {
         });
     }
 
+    // Apply advanced filters
+    const tkAdvFilters = getTkFiltersFromInputs();
+
+    // Views filter
+    if (tkAdvFilters.viewsMin !== null) {
+        filtered = filtered.filter(v => (v.views || 0) >= tkAdvFilters.viewsMin);
+    }
+    if (tkAdvFilters.viewsMax !== null) {
+        filtered = filtered.filter(v => (v.views || 0) <= tkAdvFilters.viewsMax);
+    }
+
+    // Duration filter
+    if (tkAdvFilters.durationMin !== null) {
+        filtered = filtered.filter(v => (v.duration || 0) >= tkAdvFilters.durationMin);
+    }
+    if (tkAdvFilters.durationMax !== null) {
+        filtered = filtered.filter(v => (v.duration || 0) <= tkAdvFilters.durationMax);
+    }
+
+    // Date range filter
+    if (tkAdvFilters.dateStart !== null) {
+        filtered = filtered.filter(v => (v.uploadDate || '') >= tkAdvFilters.dateStart);
+    }
+    if (tkAdvFilters.dateEnd !== null) {
+        filtered = filtered.filter(v => (v.uploadDate || '') <= tkAdvFilters.dateEnd);
+    }
+
     tkProfileResults_data = filtered;
 
     // Update display
@@ -2924,11 +2972,68 @@ function applyTkFilters() {
         enableTkSelectionButtons();
         const keywordMsg = tkSearchType === 'keyword' && tkKeyword.trim() ? ` com "${tkKeyword}"` : '';
         const dateMsg = tkQuickFilterDays > 0 ? ` (ultimos ${tkQuickFilterDays} dias)` : '';
-        showStatus(`${tkProfileResults_data.length} videos${keywordMsg}${dateMsg}`, 'success');
+        const filterCount = countTkActiveFilters();
+        const advFilterMsg = filterCount > 0 ? ` (${filterCount} filtros)` : '';
+        showStatus(`${tkProfileResults_data.length} de ${tkUnfilteredResults.length} videos${keywordMsg}${dateMsg}${advFilterMsg}`, 'success');
     } else {
         disableTkSelectionButtons();
         showStatus('Nenhum video encontrado com os filtros aplicados', 'info');
     }
+}
+
+// Get TikTok filters from inputs
+function getTkFiltersFromInputs() {
+    return {
+        viewsMin: tkFilterViewsMin?.value ? parseInt(tkFilterViewsMin.value) : null,
+        viewsMax: tkFilterViewsMax?.value ? parseInt(tkFilterViewsMax.value) : null,
+        durationMin: parseDurationInput(tkFilterDurationMin?.value),
+        durationMax: parseDurationInput(tkFilterDurationMax?.value),
+        dateStart: parseDateInput(tkFilterDateStart?.value),
+        dateEnd: parseDateInput(tkFilterDateEnd?.value)
+    };
+}
+
+// Count active TikTok filters
+function countTkActiveFilters() {
+    let count = 0;
+    if (tkFilterViewsMin?.value) count++;
+    if (tkFilterViewsMax?.value) count++;
+    if (tkFilterDurationMin?.value) count++;
+    if (tkFilterDurationMax?.value) count++;
+    if (tkFilterDateStart?.value) count++;
+    if (tkFilterDateEnd?.value) count++;
+    return count;
+}
+
+// Update TikTok filter badge
+function updateTkFilterBadge() {
+    const count = countTkActiveFilters();
+    if (tkFilterCountBadge) {
+        tkFilterCountBadge.textContent = count;
+        tkFilterCountBadge.classList.toggle('hidden', count === 0);
+    }
+}
+
+// Toggle TikTok filters panel
+function toggleTkFilters() {
+    if (!tkFiltersToggle || !tkFiltersPanel) return;
+    const isExpanded = tkFiltersToggle.getAttribute('aria-expanded') === 'true';
+    tkFiltersToggle.setAttribute('aria-expanded', !isExpanded);
+    tkFiltersToggle.classList.toggle('expanded', !isExpanded);
+    tkFiltersPanel.classList.toggle('expanded', !isExpanded);
+    tkFiltersPanel.setAttribute('aria-hidden', isExpanded);
+}
+
+// Clear TikTok advanced filters
+function clearTkAdvancedFilters() {
+    if (tkFilterViewsMin) tkFilterViewsMin.value = '';
+    if (tkFilterViewsMax) tkFilterViewsMax.value = '';
+    if (tkFilterDurationMin) tkFilterDurationMin.value = '';
+    if (tkFilterDurationMax) tkFilterDurationMax.value = '';
+    if (tkFilterDateStart) tkFilterDateStart.value = '';
+    if (tkFilterDateEnd) tkFilterDateEnd.value = '';
+    updateTkFilterBadge();
+    applyTkFilters();
 }
 
 // Set TikTok search type
@@ -2936,22 +3041,26 @@ function setTkSearchType(type) {
     tkSearchType = type;
 
     if (type === 'all') {
-        tkSearchTypeAll.classList.add('active');
-        tkSearchTypeKeyword.classList.remove('active');
-        tkSearchTypeAll.setAttribute('aria-pressed', 'true');
-        tkSearchTypeKeyword.setAttribute('aria-pressed', 'false');
-        tkKeywordInput.disabled = true;
-        tkKeywordInput.setAttribute('aria-disabled', 'true');
-        tkKeywordInput.value = '';
+        if (tkSearchTypeAll) tkSearchTypeAll.classList.add('active');
+        if (tkSearchTypeKeyword) tkSearchTypeKeyword.classList.remove('active');
+        if (tkSearchTypeAll) tkSearchTypeAll.setAttribute('aria-pressed', 'true');
+        if (tkSearchTypeKeyword) tkSearchTypeKeyword.setAttribute('aria-pressed', 'false');
+        if (tkKeywordInput) {
+            tkKeywordInput.disabled = true;
+            tkKeywordInput.setAttribute('aria-disabled', 'true');
+            tkKeywordInput.value = '';
+        }
         tkKeyword = '';
     } else {
-        tkSearchTypeAll.classList.remove('active');
-        tkSearchTypeKeyword.classList.add('active');
-        tkSearchTypeAll.setAttribute('aria-pressed', 'false');
-        tkSearchTypeKeyword.setAttribute('aria-pressed', 'true');
-        tkKeywordInput.disabled = false;
-        tkKeywordInput.setAttribute('aria-disabled', 'false');
-        tkKeywordInput.focus();
+        if (tkSearchTypeAll) tkSearchTypeAll.classList.remove('active');
+        if (tkSearchTypeKeyword) tkSearchTypeKeyword.classList.add('active');
+        if (tkSearchTypeAll) tkSearchTypeAll.setAttribute('aria-pressed', 'false');
+        if (tkSearchTypeKeyword) tkSearchTypeKeyword.setAttribute('aria-pressed', 'true');
+        if (tkKeywordInput) {
+            tkKeywordInput.disabled = false;
+            tkKeywordInput.setAttribute('aria-disabled', 'false');
+            tkKeywordInput.focus();
+        }
     }
 
     // Re-apply filters
@@ -2960,7 +3069,7 @@ function setTkSearchType(type) {
 
 // Handle TikTok keyword input
 function handleTkKeywordInput() {
-    tkKeyword = tkKeywordInput.value;
+    if (tkKeywordInput) tkKeyword = tkKeywordInput.value;
     applyTkFilters();
 }
 
@@ -3022,3 +3131,29 @@ if (tkKeywordInput) {
         }
     });
 }
+
+// TikTok Advanced Filters
+if (tkFiltersToggle) {
+    tkFiltersToggle.addEventListener('click', toggleTkFilters);
+    tkFiltersToggle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleTkFilters();
+        }
+    });
+}
+
+if (tkApplyFiltersBtn) {
+    tkApplyFiltersBtn.addEventListener('click', () => {
+        applyTkFilters();
+        updateTkFilterBadge();
+    });
+}
+
+if (tkClearFiltersBtn) {
+    tkClearFiltersBtn.addEventListener('click', clearTkAdvancedFilters);
+}
+
+// TikTok Duration input formatting
+if (tkFilterDurationMin) tkFilterDurationMin.addEventListener('input', formatDurationInput);
+if (tkFilterDurationMax) tkFilterDurationMax.addEventListener('input', formatDurationInput);
