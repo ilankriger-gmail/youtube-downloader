@@ -66,13 +66,21 @@ function detectPlatform(url) {
 // Get video info using yt-dlp
 async function getVideoInfo(url) {
     return new Promise((resolve, reject) => {
-        const ytdlp = spawn('yt-dlp', [
+        const args = [
             '--dump-json',
             '--no-download',
             '--no-warnings',
-            '--extractor-args', 'youtube:lang=pt',
-            url
-        ]);
+            '--extractor-args', 'youtube:lang=pt'
+        ];
+
+        // Add cookies for TikTok
+        if (url.includes('tiktok.com')) {
+            args.push('--cookies-from-browser', 'chrome');
+        }
+
+        args.push(url);
+
+        const ytdlp = spawn('yt-dlp', args);
 
         let stdout = '';
         let stderr = '';
@@ -432,6 +440,7 @@ async function getTikTokProfile(username, limit = 100) {
             '--no-download',
             '--no-warnings',
             '--ignore-errors',
+            '--cookies-from-browser', 'chrome',
             '--playlist-end', String(limit),
             profileUrl
         ]);
@@ -691,6 +700,11 @@ app.get('/api/download-file', async (req, res) => {
         '-f', format,
         '--no-warnings'
     ];
+
+    // Add cookies for TikTok
+    if (url.includes('tiktok.com')) {
+        args.push('--cookies-from-browser', 'chrome');
+    }
 
     if (isAudioOnly) {
         args.push('--extract-audio');

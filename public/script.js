@@ -1095,7 +1095,13 @@ function toggleVideoSelection(index) {
 }
 
 function updateSelectionCount() {
-    selectionCount.textContent = `${selectedVideos.size} selecionado(s)`;
+    const total = searchResults.length;
+    const selected = selectedVideos.size;
+    if (total > 0) {
+        selectionCount.textContent = `${total} videos | ${selected} selecionado(s)`;
+    } else {
+        selectionCount.textContent = `${selected} selecionado(s)`;
+    }
 }
 
 function updateDownloadSelectedState() {
@@ -1972,7 +1978,13 @@ function toggleTkVideoSelection(index) {
 }
 
 function updateTkSelectionCount() {
-    tkSelectionCount.textContent = `${tkSelectedVideos.size} selecionado(s)`;
+    const total = tkProfileResults_data.length;
+    const selected = tkSelectedVideos.size;
+    if (total > 0) {
+        tkSelectionCount.textContent = `${total} videos | ${selected} selecionado(s)`;
+    } else {
+        tkSelectionCount.textContent = `${selected} selecionado(s)`;
+    }
 }
 
 function updateTkDownloadSelectedState() {
