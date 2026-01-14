@@ -735,6 +735,30 @@
                             <span class="channel-name">@nextleveldj</span>
                         </header>
 
+                        <!-- Search Type Selector - TikTok -->
+                        <div class="search-type-selector" role="group" aria-label="Tipo de busca TikTok">
+                            <button id="tkSearchTypeAll" class="search-type-btn active" aria-pressed="true">
+                                Listar Todos
+                            </button>
+                            <button id="tkSearchTypeKeyword" class="search-type-btn" aria-pressed="false">
+                                Buscar por Palavra
+                            </button>
+                        </div>
+
+                        <!-- Keyword Search Input - TikTok -->
+                        <div class="search-input-row">
+                            <label for="tkKeywordInput" class="visually-hidden">Buscar videos</label>
+                            <input
+                                type="text"
+                                id="tkKeywordInput"
+                                class="search-input"
+                                placeholder="Digite para filtrar videos..."
+                                autocomplete="off"
+                                disabled
+                                aria-disabled="true"
+                            >
+                        </div>
+
                         <!-- Quick Date Filters - TikTok -->
                         <div class="quick-filters-section">
                             <label class="quick-filters-label">Filtro de Data:</label>

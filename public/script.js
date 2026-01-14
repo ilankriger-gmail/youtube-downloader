@@ -57,6 +57,9 @@ const tkClearSelectionBtn = document.getElementById('tkClearSelectionBtn');
 const tkDownloadSelectedBtn = document.getElementById('tkDownloadSelectedBtn');
 const tkSelectionCount = document.getElementById('tkSelectionCount');
 const tkProfileResults = document.getElementById('tkProfileResults');
+const tkSearchTypeAll = document.getElementById('tkSearchTypeAll');
+const tkSearchTypeKeyword = document.getElementById('tkSearchTypeKeyword');
+const tkKeywordInput = document.getElementById('tkKeywordInput');
 
 // DOM Elements - Quick Filters (YouTube)
 const quickFilterMonth = document.getElementById('quickFilterMonth');
@@ -140,6 +143,8 @@ let tkCurrentSortField = 'views';
 let tkCurrentSortOrder = 'desc';
 let tkTop5Ids = new Set();
 let tkBottom5Ids = new Set();
+let tkSearchType = 'all'; // 'all' | 'keyword'
+let tkKeyword = '';
 
 // State - Search Mode (YouTube)
 let searchResults = [];
@@ -2816,21 +2821,39 @@ function applyTikTokQuickFilter(days) {
         btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
     });
 
+    // Apply all TikTok filters
+    applyTkFilters();
+}
+
+// Apply all TikTok filters (date + keyword)
+function applyTkFilters() {
     // If no results loaded yet, just store the preference
     if (tkUnfilteredResults.length === 0) {
         return;
     }
 
-    // Apply filter
-    if (days === 0) {
-        tkProfileResults_data = [...tkUnfilteredResults];
-    } else {
-        const cutoffDate = getDateDaysAgo(days);
-        tkProfileResults_data = tkUnfilteredResults.filter(video => {
+    // Start with all results
+    let filtered = [...tkUnfilteredResults];
+
+    // Apply date filter
+    if (tkQuickFilterDays > 0) {
+        const cutoffDate = getDateDaysAgo(tkQuickFilterDays);
+        filtered = filtered.filter(video => {
             const uploadDate = video.uploadDate || '';
             return uploadDate >= cutoffDate;
         });
     }
+
+    // Apply keyword filter
+    if (tkSearchType === 'keyword' && tkKeyword.trim()) {
+        const keyword = tkKeyword.toLowerCase().trim();
+        filtered = filtered.filter(video => {
+            const title = (video.title || '').toLowerCase();
+            return title.includes(keyword);
+        });
+    }
+
+    tkProfileResults_data = filtered;
 
     // Update display
     tkSelectedVideos.clear();
@@ -2840,11 +2863,46 @@ function applyTikTokQuickFilter(days) {
 
     if (tkProfileResults_data.length > 0) {
         enableTkSelectionButtons();
-        showStatus(`${tkProfileResults_data.length} videos (ultimos ${days} dias)`, 'success');
+        const keywordMsg = tkSearchType === 'keyword' && tkKeyword.trim() ? ` com "${tkKeyword}"` : '';
+        const dateMsg = tkQuickFilterDays > 0 ? ` (ultimos ${tkQuickFilterDays} dias)` : '';
+        showStatus(`${tkProfileResults_data.length} videos${keywordMsg}${dateMsg}`, 'success');
     } else {
         disableTkSelectionButtons();
-        showStatus('Nenhum video encontrado neste periodo', 'info');
+        showStatus('Nenhum video encontrado com os filtros aplicados', 'info');
     }
+}
+
+// Set TikTok search type
+function setTkSearchType(type) {
+    tkSearchType = type;
+
+    if (type === 'all') {
+        tkSearchTypeAll.classList.add('active');
+        tkSearchTypeKeyword.classList.remove('active');
+        tkSearchTypeAll.setAttribute('aria-pressed', 'true');
+        tkSearchTypeKeyword.setAttribute('aria-pressed', 'false');
+        tkKeywordInput.disabled = true;
+        tkKeywordInput.setAttribute('aria-disabled', 'true');
+        tkKeywordInput.value = '';
+        tkKeyword = '';
+    } else {
+        tkSearchTypeAll.classList.remove('active');
+        tkSearchTypeKeyword.classList.add('active');
+        tkSearchTypeAll.setAttribute('aria-pressed', 'false');
+        tkSearchTypeKeyword.setAttribute('aria-pressed', 'true');
+        tkKeywordInput.disabled = false;
+        tkKeywordInput.setAttribute('aria-disabled', 'false');
+        tkKeywordInput.focus();
+    }
+
+    // Re-apply filters
+    applyTkFilters();
+}
+
+// Handle TikTok keyword input
+function handleTkKeywordInput() {
+    tkKeyword = tkKeywordInput.value;
+    applyTkFilters();
 }
 
 // ==================== QUICK FILTER EVENT LISTENERS ====================
@@ -2877,3 +2935,17 @@ document.querySelectorAll('.tk-quick-filter').forEach(btn => {
         applyTikTokQuickFilter(days);
     });
 });
+
+// TikTok Search Type Buttons
+if (tkSearchTypeAll) tkSearchTypeAll.addEventListener('click', () => setTkSearchType('all'));
+if (tkSearchTypeKeyword) tkSearchTypeKeyword.addEventListener('click', () => setTkSearchType('keyword'));
+
+// TikTok Keyword Input
+if (tkKeywordInput) {
+    tkKeywordInput.addEventListener('input', handleTkKeywordInput);
+    tkKeywordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleTkKeywordInput();
+        }
+    });
+}
