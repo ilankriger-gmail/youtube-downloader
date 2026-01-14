@@ -1382,15 +1382,15 @@ function downloadSearchVideo(video) {
 // ==================== EVENT LISTENERS ====================
 
 // Mode switching
-modeTabUrl.addEventListener('click', () => switchMode('url'));
-modeTabSearch.addEventListener('click', () => switchMode('search'));
+if (modeTabUrl) modeTabUrl.addEventListener('click', () => switchMode('url'));
+if (modeTabSearch) modeTabSearch.addEventListener('click', () => switchMode('search'));
 
 // URL Mode
-validateBtn.addEventListener('click', validateUrls);
-downloadAllBtn.addEventListener('click', downloadAllVideos);
-openFolderBtn.addEventListener('click', openFolder);
+if (validateBtn) validateBtn.addEventListener('click', validateUrls);
+if (downloadAllBtn) downloadAllBtn.addEventListener('click', downloadAllVideos);
+if (openFolderBtn) openFolderBtn.addEventListener('click', openFolder);
 
-urlInput.addEventListener('keydown', (e) => {
+if (urlInput) urlInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.ctrlKey) {
         e.preventDefault();
         validateUrls();
@@ -1398,54 +1398,64 @@ urlInput.addEventListener('keydown', (e) => {
 });
 
 // Search Mode
-searchTypeAll.addEventListener('click', () => setSearchType('all'));
-searchTypeKeyword.addEventListener('click', () => setSearchType('keyword'));
-searchBtn.addEventListener('click', performSearch);
-selectTop5Btn.addEventListener('click', selectTop5);
-selectBottom5Btn.addEventListener('click', selectBottom5);
-clearSelectionBtn.addEventListener('click', clearSelection);
-downloadSelectedBtn.addEventListener('click', downloadSelectedVideos);
+if (searchTypeAll) searchTypeAll.addEventListener('click', () => setSearchType('all'));
+if (searchTypeKeyword) searchTypeKeyword.addEventListener('click', () => setSearchType('keyword'));
+if (searchBtn) searchBtn.addEventListener('click', performSearch);
+if (selectTop5Btn) selectTop5Btn.addEventListener('click', selectTop5);
+if (selectBottom5Btn) selectBottom5Btn.addEventListener('click', selectBottom5);
+if (clearSelectionBtn) clearSelectionBtn.addEventListener('click', clearSelection);
+if (downloadSelectedBtn) downloadSelectedBtn.addEventListener('click', downloadSelectedVideos);
 
-sortBySelect.addEventListener('change', (e) => {
-    const [field, order] = e.target.value.split('-');
-    sortSearchResults(field, order);
-});
+if (sortBySelect) {
+    sortBySelect.addEventListener('change', (e) => {
+        const [field, order] = e.target.value.split('-');
+        sortSearchResults(field, order);
+    });
+}
 
-searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        performSearch();
-    }
-});
+if (searchInput) {
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+}
 
 // Content Type Tabs
-contentTypeVideos.addEventListener('click', () => setContentType('videos'));
-contentTypeShorts.addEventListener('click', () => setContentType('shorts'));
-contentTypeLives.addEventListener('click', () => setContentType('lives'));
+if (contentTypeVideos) contentTypeVideos.addEventListener('click', () => setContentType('videos'));
+if (contentTypeShorts) contentTypeShorts.addEventListener('click', () => setContentType('shorts'));
+if (contentTypeLives) contentTypeLives.addEventListener('click', () => setContentType('lives'));
 
 // Filters - Collapsible Toggle
-filtersToggle.addEventListener('click', toggleFilters);
-filtersToggle.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggleFilters();
-    }
-});
+if (filtersToggle) {
+    filtersToggle.addEventListener('click', toggleFilters);
+    filtersToggle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleFilters();
+        }
+    });
+}
 
 // Filters - Apply and Clear
-applyFiltersBtn.addEventListener('click', () => {
-    applyFilters();
-    updateFilterBadge();
-});
+if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener('click', () => {
+        applyFilters();
+        updateFilterBadge();
+    });
+}
 
-clearFiltersBtn.addEventListener('click', () => {
-    clearFilters();
-    updateFilterBadge();
-});
+if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener('click', () => {
+        clearFilters();
+        updateFilterBadge();
+    });
+}
 
 // Duration input formatting (auto-add colon)
-filterDurationMin.addEventListener('input', formatDurationInput);
-filterDurationMax.addEventListener('input', formatDurationInput);
+if (filterDurationMin) filterDurationMin.addEventListener('input', formatDurationInput);
+if (filterDurationMax) filterDurationMax.addEventListener('input', formatDurationInput);
 
 function formatDurationInput(e) {
     let value = e.target.value.replace(/[^0-9:]/g, '');
@@ -2614,9 +2624,9 @@ function downloadTkProfileVideo(video) {
 // ==================== ADDITIONAL EVENT LISTENERS ====================
 
 // Platform Switching
-platformYoutube.addEventListener('click', () => switchPlatform('youtube'));
-platformInstagram.addEventListener('click', () => switchPlatform('instagram'));
-platformTiktok.addEventListener('click', () => switchPlatform('tiktok'));
+if (platformYoutube) platformYoutube.addEventListener('click', () => switchPlatform('youtube'));
+if (platformInstagram) platformInstagram.addEventListener('click', () => switchPlatform('instagram'));
+if (platformTiktok) platformTiktok.addEventListener('click', () => switchPlatform('tiktok'));
 
 // Instagram Mode Switching
 if (igModeTabUrl) igModeTabUrl.addEventListener('click', () => switchInstagramMode('url'));
@@ -2644,25 +2654,27 @@ if (igSortBySelect) {
 }
 
 // TikTok Mode Switching
-tkModeTabUrl.addEventListener('click', () => switchTikTokMode('url'));
-tkModeTabProfile.addEventListener('click', () => switchTikTokMode('profile'));
+if (tkModeTabUrl) tkModeTabUrl.addEventListener('click', () => switchTikTokMode('url'));
+if (tkModeTabProfile) tkModeTabProfile.addEventListener('click', () => switchTikTokMode('profile'));
 
 // TikTok URL Mode
-tkValidateBtn.addEventListener('click', validateTkUrls);
-tkDownloadAllBtn.addEventListener('click', downloadAllTkVideos);
-tkOpenFolderBtn.addEventListener('click', openFolder);
+if (tkValidateBtn) tkValidateBtn.addEventListener('click', validateTkUrls);
+if (tkDownloadAllBtn) tkDownloadAllBtn.addEventListener('click', downloadAllTkVideos);
+if (tkOpenFolderBtn) tkOpenFolderBtn.addEventListener('click', openFolder);
 
 // TikTok Profile Mode
-tkLoadProfileBtn.addEventListener('click', loadTkProfile);
-tkSelectTop5Btn.addEventListener('click', selectTkTop5);
-tkSelectBottom5Btn.addEventListener('click', selectTkBottom5);
-tkClearSelectionBtn.addEventListener('click', clearTkSelection);
-tkDownloadSelectedBtn.addEventListener('click', downloadTkSelectedVideos);
+if (tkLoadProfileBtn) tkLoadProfileBtn.addEventListener('click', loadTkProfile);
+if (tkSelectTop5Btn) tkSelectTop5Btn.addEventListener('click', selectTkTop5);
+if (tkSelectBottom5Btn) tkSelectBottom5Btn.addEventListener('click', selectTkBottom5);
+if (tkClearSelectionBtn) tkClearSelectionBtn.addEventListener('click', clearTkSelection);
+if (tkDownloadSelectedBtn) tkDownloadSelectedBtn.addEventListener('click', downloadTkSelectedVideos);
 
-tkSortBySelect.addEventListener('change', (e) => {
-    const [field, order] = e.target.value.split('-');
-    sortTkResults(field, order);
-});
+if (tkSortBySelect) {
+    tkSortBySelect.addEventListener('change', (e) => {
+        const [field, order] = e.target.value.split('-');
+        sortTkResults(field, order);
+    });
+}
 
 // ==================== QUICK DATE FILTERS ====================
 
