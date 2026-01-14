@@ -290,120 +290,6 @@ app.post('/api/channel-lives', async (req, res) => {
     }
 });
 
-// ==================== INSTAGRAM PROFILE ====================
-
-// Get content from Instagram profile
-app.post('/api/instagram-profile', async (req, res) => {
-    const { username, contentType = 'reels', limit = 100 } = req.body;
-
-    if (!username) {
-        return res.status(400).json({ error: 'Username is required' });
-    }
-
-    try {
-        const results = await getInstagramProfile(username, contentType, limit);
-        res.json({
-            username: username,
-            count: results.length,
-            contentType: contentType,
-            videos: results
-        });
-    } catch (error) {
-        console.error('[INSTAGRAM] Error:', error.message);
-        res.status(500).json({ error: error.message || 'Failed to get Instagram profile' });
-    }
-});
-
-// Get Instagram profile content using yt-dlp
-async function getInstagramProfile(username, contentType = 'reels', limit = 100) {
-    return new Promise((resolve, reject) => {
-        // Instagram profile URLs
-        const urlMap = {
-            'posts': `https://www.instagram.com/${username}/`,
-            'reels': `https://www.instagram.com/${username}/reels/`,
-            'stories': `https://www.instagram.com/stories/${username}/`
-        };
-        const profileUrl = urlMap[contentType] || urlMap['reels'];
-
-        console.log(`[INSTAGRAM] Fetching ${contentType} from @${username} (limit: ${limit})`);
-
-        const ytdlp = spawn('yt-dlp', [
-            '--dump-json',
-            '--flat-playlist',
-            '--no-download',
-            '--no-warnings',
-            '--ignore-errors',
-            '--playlist-end', String(limit),
-            profileUrl
-        ]);
-
-        let stdout = '';
-        let stderr = '';
-
-        const timeout = setTimeout(() => {
-            ytdlp.kill('SIGTERM');
-            reject(new Error('Instagram fetch timeout'));
-        }, 300000); // 5 minutes
-
-        ytdlp.stdout.on('data', (data) => {
-            stdout += data.toString();
-        });
-
-        ytdlp.stderr.on('data', (data) => {
-            stderr += data.toString();
-        });
-
-        ytdlp.on('close', (code) => {
-            clearTimeout(timeout);
-
-            if (code !== 0 && stdout.length === 0) {
-                // Check if it's a private account or login required
-                if (stderr.includes('login') || stderr.includes('private')) {
-                    reject(new Error('Conta privada ou login necessario'));
-                } else {
-                    reject(new Error(stderr || 'Failed to fetch Instagram profile'));
-                }
-                return;
-            }
-
-            try {
-                const lines = stdout.trim().split('\n').filter(line => line.trim());
-                const videos = [];
-
-                for (const line of lines) {
-                    try {
-                        const info = JSON.parse(line);
-                        videos.push({
-                            id: info.id,
-                            url: info.webpage_url || info.url || `https://www.instagram.com/reel/${info.id}/`,
-                            title: info.title || info.description?.substring(0, 100) || 'Instagram Video',
-                            channel: info.channel || info.uploader || username,
-                            duration: info.duration || 0,
-                            views: info.view_count || info.like_count || 0,
-                            thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
-                            uploadDate: info.upload_date || '',
-                            platform: 'instagram',
-                            contentType: contentType
-                        });
-                    } catch (parseError) {
-                        // Skip invalid lines
-                    }
-                }
-
-                console.log(`[INSTAGRAM] Found ${videos.length} ${contentType} from @${username}`);
-                resolve(videos);
-            } catch (error) {
-                reject(new Error('Failed to parse Instagram content'));
-            }
-        });
-
-        ytdlp.on('error', (err) => {
-            clearTimeout(timeout);
-            reject(err);
-        });
-    });
-}
-
 // ==================== TIKTOK PROFILE ====================
 
 // Get content from TikTok profile
@@ -505,6 +391,98 @@ async function getTikTokProfile(username, limit = 100) {
         });
 
         ytdlp.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+        });
+    });
+}
+
+// ==================== INSTAGRAM PROFILE ====================
+
+// Path to Python in pipx venv (for instaloader)
+const INSTALOADER_PYTHON = path.join(
+    process.env.HOME || os.homedir(),
+    '.local/pipx/venvs/instaloader/bin/python'
+);
+
+// Get content from Instagram profile using instaloader
+app.post('/api/instagram-profile', async (req, res) => {
+    const { username, contentType = 'posts', limit = 50 } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        const results = await getInstagramProfile(username, contentType, limit);
+        res.json(results);
+    } catch (error) {
+        console.error('[INSTAGRAM] Error:', error.message);
+        res.status(500).json({ error: error.message || 'Failed to get Instagram profile' });
+    }
+});
+
+// Get Instagram profile content using instaloader via Python script
+async function getInstagramProfile(username, contentType = 'posts', limit = 50) {
+    return new Promise((resolve, reject) => {
+        const cleanUsername = username.replace('@', '');
+        const scriptPath = path.join(__dirname, 'scripts', 'instagram_fetch.py');
+
+        console.log(`[INSTAGRAM] Fetching ${contentType} from @${cleanUsername} (limit: ${limit})`);
+
+        const pythonProcess = spawn(INSTALOADER_PYTHON, [
+            scriptPath,
+            cleanUsername,
+            contentType,
+            String(limit)
+        ]);
+
+        let stdout = '';
+        let stderr = '';
+
+        const timeout = setTimeout(() => {
+            pythonProcess.kill('SIGTERM');
+            reject(new Error('Instagram fetch timeout'));
+        }, 300000); // 5 minutes
+
+        pythonProcess.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        pythonProcess.on('close', (code) => {
+            clearTimeout(timeout);
+
+            // Filter out the 403 warning messages from stderr
+            const cleanStderr = stderr
+                .split('\n')
+                .filter(line => !line.includes('403 Forbidden') && !line.includes('retrying'))
+                .join('\n')
+                .trim();
+
+            try {
+                const result = JSON.parse(stdout);
+
+                if (result.error) {
+                    reject(new Error(result.error));
+                    return;
+                }
+
+                console.log(`[INSTAGRAM] Found ${result.videos?.length || 0} ${contentType} from @${cleanUsername}`);
+                resolve(result);
+            } catch (parseError) {
+                if (cleanStderr) {
+                    reject(new Error(cleanStderr));
+                } else {
+                    reject(new Error('Failed to parse Instagram content'));
+                }
+            }
+        });
+
+        pythonProcess.on('error', (err) => {
             clearTimeout(timeout);
             reject(err);
         });

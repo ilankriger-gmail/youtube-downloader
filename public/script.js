@@ -21,7 +21,21 @@ const igDownloadAllBtn = document.getElementById('igDownloadAllBtn');
 const igOpenFolderBtn = document.getElementById('igOpenFolderBtn');
 const igQualitySelect = document.getElementById('igQualitySelect');
 const igVideoList = document.getElementById('igVideoList');
-// Instagram only uses URL mode now (profile mode removed - yt-dlp doesn't support it)
+const igModeTabUrl = document.getElementById('igModeTabUrl');
+const igModeTabProfile = document.getElementById('igModeTabProfile');
+const igUrlModeSection = document.getElementById('igUrlModeSection');
+const igProfileModeSection = document.getElementById('igProfileModeSection');
+const igLoadProfileBtn = document.getElementById('igLoadProfileBtn');
+const igContentTypePosts = document.getElementById('igContentTypePosts');
+const igContentTypeReels = document.getElementById('igContentTypeReels');
+const igSortBySelect = document.getElementById('igSortBySelect');
+const igProfileQualitySelect = document.getElementById('igProfileQualitySelect');
+const igSelectTop5Btn = document.getElementById('igSelectTop5Btn');
+const igSelectBottom5Btn = document.getElementById('igSelectBottom5Btn');
+const igClearSelectionBtn = document.getElementById('igClearSelectionBtn');
+const igDownloadSelectedBtn = document.getElementById('igDownloadSelectedBtn');
+const igSelectionCount = document.getElementById('igSelectionCount');
+const igProfileResults = document.getElementById('igProfileResults');
 
 // DOM Elements - TikTok
 const tkUrlInput = document.getElementById('tkUrlInput');
@@ -99,9 +113,21 @@ let currentPlatform = 'youtube'; // 'youtube' | 'instagram' | 'tiktok'
 let validatedVideos = [];
 let videoPrefixes = {};
 
-// State - Instagram (URL mode only - profile mode not supported by yt-dlp)
+// State - Instagram
 let igValidatedVideos = [];
 let igVideoPrefixes = {};
+let igCurrentMode = 'url'; // 'url' | 'profile'
+let igContentType = 'posts'; // 'posts' | 'reels'
+let igProfileResults_data = [];
+let igUnfilteredResults = [];
+let igSelectedVideos = new Set();
+let igCurrentSortField = 'views';
+let igCurrentSortOrder = 'desc';
+let igTop5Ids = new Set();
+let igBottom5Ids = new Set();
+
+// Fixed Instagram username
+const INSTAGRAM_USERNAME = 'nextleveldj1';
 
 // State - TikTok
 let tkValidatedVideos = [];
@@ -213,8 +239,48 @@ function switchPlatform(platform) {
     overallProgress.classList.add('hidden');
 }
 
-// ==================== INSTAGRAM ====================
-// Instagram only supports URL mode (profile scraping not supported by yt-dlp)
+// ==================== INSTAGRAM MODE SWITCHING ====================
+
+function switchInstagramMode(mode) {
+    igCurrentMode = mode;
+
+    if (mode === 'url') {
+        igModeTabUrl.classList.add('active');
+        igModeTabProfile.classList.remove('active');
+        igUrlModeSection.classList.remove('hidden');
+        igProfileModeSection.classList.add('hidden');
+    } else {
+        igModeTabUrl.classList.remove('active');
+        igModeTabProfile.classList.add('active');
+        igUrlModeSection.classList.add('hidden');
+        igProfileModeSection.classList.remove('hidden');
+    }
+
+    // Update ARIA
+    igModeTabUrl.setAttribute('aria-selected', mode === 'url');
+    igModeTabProfile.setAttribute('aria-selected', mode === 'profile');
+
+    hideStatus();
+    overallProgress.classList.add('hidden');
+}
+
+function setInstagramContentType(type) {
+    igContentType = type;
+
+    // Update tab buttons
+    igContentTypePosts.classList.toggle('active', type === 'posts');
+    igContentTypeReels.classList.toggle('active', type === 'reels');
+
+    // Update ARIA
+    igContentTypePosts.setAttribute('aria-selected', type === 'posts');
+    igContentTypeReels.setAttribute('aria-selected', type === 'reels');
+
+    // Update button text
+    const igLoadBtnText = document.getElementById('igLoadBtnText');
+    if (igLoadBtnText) {
+        igLoadBtnText.textContent = type === 'posts' ? 'Carregar Posts' : 'Carregar Reels';
+    }
+}
 
 // ==================== TIKTOK MODE SWITCHING ====================
 
@@ -1585,9 +1651,370 @@ async function downloadAllIgVideos() {
     showStatus(`${completedCount} download(s) concluido(s)!`, 'success');
 }
 
-// Instagram Profile Functions - REMOVED
-// yt-dlp doesn't support Instagram profile scraping (marked as broken)
-// Only URL mode is available for Instagram
+// ==================== INSTAGRAM PROFILE FUNCTIONS ====================
+
+async function loadIgProfile() {
+    const username = INSTAGRAM_USERNAME;
+
+    igLoadProfileBtn.disabled = true;
+    const igLoadBtnText = document.getElementById('igLoadBtnText');
+    if (igLoadBtnText) igLoadBtnText.textContent = 'Carregando...';
+
+    const typeLabel = igContentType === 'posts' ? 'posts' : 'reels';
+    igProfileResults.innerHTML = `<div class="loading">Carregando ${typeLabel} de @${username}...<br><small>Isso pode levar alguns minutos...</small></div>`;
+    igSelectedVideos.clear();
+    updateIgSelectionCount();
+    disableIgSelectionButtons();
+
+    try {
+        const response = await fetch('/api/instagram-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username,
+                contentType: igContentType,
+                limit: 50
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            throw new Error(data.error || 'Falha ao carregar perfil');
+        }
+
+        igUnfilteredResults = data.videos || [];
+        igProfileResults_data = [...igUnfilteredResults];
+
+        if (igProfileResults_data.length === 0) {
+            igProfileResults.innerHTML = `<div class="no-results"><p>Nenhum ${typeLabel} encontrado para @${username}</p></div>`;
+            showStatus('Nenhum conteudo encontrado', 'error');
+            return;
+        }
+
+        // Calculate TOP/BOTTOM 5
+        calculateIgTopBottom();
+
+        // Sort by views and render
+        sortIgResults('views', 'desc');
+
+        enableIgSelectionButtons();
+        showStatus(`${igProfileResults_data.length} ${typeLabel} carregados de @${username}`, 'success');
+
+    } catch (error) {
+        showStatus('Erro: ' + error.message, 'error');
+        igProfileResults.innerHTML = `<div class="no-results"><p>Erro</p><p class="hint">${error.message}</p></div>`;
+    } finally {
+        igLoadProfileBtn.disabled = false;
+        const igLoadBtnText = document.getElementById('igLoadBtnText');
+        if (igLoadBtnText) igLoadBtnText.textContent = igContentType === 'posts' ? 'Carregar Posts' : 'Carregar Reels';
+    }
+}
+
+function calculateIgTopBottom() {
+    const sortedByViews = [...igProfileResults_data].sort((a, b) => (b.views || 0) - (a.views || 0));
+    igTop5Ids = new Set(sortedByViews.slice(0, 5).map(v => v.id));
+    igBottom5Ids = new Set(sortedByViews.slice(-5).map(v => v.id));
+}
+
+function sortIgResults(field, order) {
+    igCurrentSortField = field;
+    igCurrentSortOrder = order;
+
+    igProfileResults_data.sort((a, b) => {
+        let valueA, valueB;
+
+        switch(field) {
+            case 'views':
+                valueA = a.views || 0;
+                valueB = b.views || 0;
+                break;
+            case 'date':
+                valueA = a.uploadDate || '';
+                valueB = b.uploadDate || '';
+                break;
+            default:
+                valueA = a.views || 0;
+                valueB = b.views || 0;
+        }
+
+        if (order === 'asc') {
+            return valueA > valueB ? 1 : -1;
+        } else {
+            return valueA < valueB ? 1 : -1;
+        }
+    });
+
+    renderIgResults();
+}
+
+function renderIgResults() {
+    igProfileResults.innerHTML = '';
+
+    if (igProfileResults_data.length === 0) return;
+
+    igProfileResults_data.forEach((video, index) => {
+        const item = createIgResultItem(video, index);
+        igProfileResults.appendChild(item);
+    });
+
+    updateIgDownloadSelectedState();
+}
+
+function createIgResultItem(video, index) {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.id = `ig-search-${index}`;
+
+    const isTop5 = igTop5Ids.has(video.id);
+    const isBottom5 = igBottom5Ids.has(video.id);
+    const isSelected = igSelectedVideos.has(index);
+
+    if (isSelected) item.classList.add('selected');
+
+    let badgeHtml = '';
+    if (isTop5) {
+        const sortedByViews = [...igProfileResults_data].sort((a, b) => (b.views || 0) - (a.views || 0));
+        const rank = sortedByViews.findIndex(v => v.id === video.id) + 1;
+        badgeHtml = `<span class="badge badge-top">TOP ${rank}</span>`;
+    } else if (isBottom5) {
+        const sortedByViews = [...igProfileResults_data].sort((a, b) => (b.views || 0) - (a.views || 0));
+        const rank = igProfileResults_data.length - sortedByViews.findIndex(v => v.id === video.id);
+        badgeHtml = `<span class="badge badge-bottom">BTM ${rank}</span>`;
+    }
+
+    const dateFormatted = formatDate(video.uploadDate);
+
+    item.innerHTML = `
+        <input type="checkbox" class="result-checkbox"
+               data-index="${index}"
+               ${isSelected ? 'checked' : ''}
+               onchange="toggleIgVideoSelection(${index})">
+        <img class="result-thumbnail"
+             src="${video.thumbnail}"
+             alt=""
+             onerror="this.style.background='var(--bg-primary)'">
+        <div class="result-info">
+            <div class="result-title-row">
+                ${badgeHtml}
+                <span class="result-title" title="${video.title}">${video.title}</span>
+            </div>
+            <div class="result-meta">
+                <span class="result-channel">${video.channel || ''}</span>
+                <span class="result-separator">|</span>
+                <span class="result-views">${formatViews(video.views)} ${video.isVideo ? 'views' : 'likes'}</span>
+                ${video.duration ? `<span class="result-separator">|</span><span class="result-duration">${formatDuration(video.duration)}</span>` : ''}
+                ${dateFormatted ? `<span class="result-separator">|</span><span class="result-date">${dateFormatted}</span>` : ''}
+            </div>
+        </div>
+    `;
+
+    item.addEventListener('click', (e) => {
+        if (e.target.type !== 'checkbox') {
+            toggleIgVideoSelection(index);
+        }
+    });
+
+    return item;
+}
+
+function toggleIgVideoSelection(index) {
+    if (igSelectedVideos.has(index)) {
+        igSelectedVideos.delete(index);
+    } else {
+        igSelectedVideos.add(index);
+    }
+
+    const item = document.getElementById(`ig-search-${index}`);
+    const checkbox = item.querySelector('.result-checkbox');
+
+    if (igSelectedVideos.has(index)) {
+        item.classList.add('selected');
+        checkbox.checked = true;
+    } else {
+        item.classList.remove('selected');
+        checkbox.checked = false;
+    }
+
+    updateIgSelectionCount();
+    updateIgDownloadSelectedState();
+}
+
+function updateIgSelectionCount() {
+    if (igSelectionCount) {
+        igSelectionCount.textContent = `${igSelectedVideos.size} selecionado(s)`;
+    }
+}
+
+function updateIgDownloadSelectedState() {
+    if (igDownloadSelectedBtn) igDownloadSelectedBtn.disabled = igSelectedVideos.size === 0;
+    if (igClearSelectionBtn) igClearSelectionBtn.disabled = igSelectedVideos.size === 0;
+}
+
+function enableIgSelectionButtons() {
+    if (igSelectTop5Btn) igSelectTop5Btn.disabled = false;
+    if (igSelectBottom5Btn) igSelectBottom5Btn.disabled = false;
+}
+
+function disableIgSelectionButtons() {
+    if (igSelectTop5Btn) igSelectTop5Btn.disabled = true;
+    if (igSelectBottom5Btn) igSelectBottom5Btn.disabled = true;
+    if (igClearSelectionBtn) igClearSelectionBtn.disabled = true;
+    if (igDownloadSelectedBtn) igDownloadSelectedBtn.disabled = true;
+}
+
+function selectIgTop5() {
+    const sortedByViews = [...igProfileResults_data]
+        .map((v, i) => ({ ...v, originalIndex: i }))
+        .sort((a, b) => (b.views || 0) - (a.views || 0));
+
+    const top5Indices = sortedByViews.slice(0, 5).map(v => v.originalIndex);
+
+    top5Indices.forEach(index => {
+        if (!igSelectedVideos.has(index)) {
+            igSelectedVideos.add(index);
+            const item = document.getElementById(`ig-search-${index}`);
+            if (item) {
+                item.classList.add('selected');
+                const checkbox = item.querySelector('.result-checkbox');
+                if (checkbox) checkbox.checked = true;
+            }
+        }
+    });
+
+    updateIgSelectionCount();
+    updateIgDownloadSelectedState();
+}
+
+function selectIgBottom5() {
+    const sortedByViews = [...igProfileResults_data]
+        .map((v, i) => ({ ...v, originalIndex: i }))
+        .sort((a, b) => (b.views || 0) - (a.views || 0));
+
+    const bottom5Indices = sortedByViews.slice(-5).map(v => v.originalIndex);
+
+    bottom5Indices.forEach(index => {
+        if (!igSelectedVideos.has(index)) {
+            igSelectedVideos.add(index);
+            const item = document.getElementById(`ig-search-${index}`);
+            if (item) {
+                item.classList.add('selected');
+                const checkbox = item.querySelector('.result-checkbox');
+                if (checkbox) checkbox.checked = true;
+            }
+        }
+    });
+
+    updateIgSelectionCount();
+    updateIgDownloadSelectedState();
+}
+
+function clearIgSelection() {
+    igSelectedVideos.forEach(index => {
+        const item = document.getElementById(`ig-search-${index}`);
+        if (item) {
+            item.classList.remove('selected');
+            const checkbox = item.querySelector('.result-checkbox');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    igSelectedVideos.clear();
+    updateIgSelectionCount();
+    updateIgDownloadSelectedState();
+}
+
+async function downloadIgSelectedVideos() {
+    if (igSelectedVideos.size === 0) {
+        showStatus('Selecione pelo menos um video', 'error');
+        return;
+    }
+
+    const indices = Array.from(igSelectedVideos);
+
+    igDownloadSelectedBtn.disabled = true;
+    igDownloadSelectedBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Baixando...';
+    igLoadProfileBtn.disabled = true;
+    igSelectTop5Btn.disabled = true;
+    igSelectBottom5Btn.disabled = true;
+    igClearSelectionBtn.disabled = true;
+
+    overallProgress.classList.remove('hidden');
+    updateOverallProgress(0, indices.length);
+
+    let completedCount = 0;
+
+    for (let i = 0; i < indices.length; i++) {
+        const index = indices[i];
+        const video = igProfileResults_data[index];
+
+        showStatus(`Baixando ${i + 1} de ${indices.length}: ${video.title.substring(0, 50)}...`, 'info');
+
+        const item = document.getElementById(`ig-search-${index}`);
+        item.classList.add('downloading');
+
+        try {
+            await downloadIgProfileVideo(video);
+            item.classList.remove('downloading');
+            item.classList.add('downloaded');
+        } catch (error) {
+            console.error('Download failed:', error);
+            item.classList.remove('downloading');
+            item.classList.add('download-error');
+        }
+
+        completedCount++;
+        updateOverallProgress(completedCount, indices.length);
+
+        if (i < indices.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+
+    igDownloadSelectedBtn.disabled = false;
+    igDownloadSelectedBtn.innerHTML = '<span class="btn-icon">&#11015;</span> Baixar Selecionados';
+    igLoadProfileBtn.disabled = false;
+    igSelectTop5Btn.disabled = false;
+    igSelectBottom5Btn.disabled = false;
+    igClearSelectionBtn.disabled = igSelectedVideos.size === 0;
+
+    showStatus(`${completedCount} download(s) concluido(s)!`, 'success');
+}
+
+function downloadIgProfileVideo(video) {
+    return new Promise((resolve, reject) => {
+        const quality = igProfileQualitySelect ? igProfileQualitySelect.value : 'best';
+
+        const params = new URLSearchParams({
+            url: video.url,
+            quality: quality,
+            prefix: '',
+            title: video.title || 'Instagram Post',
+            views: video.views || 0
+        });
+
+        fetch(`/api/download-file?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Download failed');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const ext = quality === 'audio' ? 'mp3' : 'mp4';
+                const viewsFormatted = formatViews(video.views);
+                a.download = `${viewsFormatted} - ${video.title || 'Instagram Post'}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                resolve(true);
+            })
+            .catch(error => {
+                reject(error);
+            });
+    });
+}
 
 // ==================== TIKTOK FUNCTIONS ====================
 
@@ -2164,10 +2591,30 @@ platformYoutube.addEventListener('click', () => switchPlatform('youtube'));
 platformInstagram.addEventListener('click', () => switchPlatform('instagram'));
 platformTiktok.addEventListener('click', () => switchPlatform('tiktok'));
 
-// Instagram URL Mode (only mode available - profile scraping not supported)
+// Instagram Mode Switching
+if (igModeTabUrl) igModeTabUrl.addEventListener('click', () => switchInstagramMode('url'));
+if (igModeTabProfile) igModeTabProfile.addEventListener('click', () => switchInstagramMode('profile'));
+
+// Instagram URL Mode
 if (igValidateBtn) igValidateBtn.addEventListener('click', validateIgUrls);
 if (igDownloadAllBtn) igDownloadAllBtn.addEventListener('click', downloadAllIgVideos);
 if (igOpenFolderBtn) igOpenFolderBtn.addEventListener('click', openFolder);
+
+// Instagram Profile Mode
+if (igLoadProfileBtn) igLoadProfileBtn.addEventListener('click', loadIgProfile);
+if (igContentTypePosts) igContentTypePosts.addEventListener('click', () => setInstagramContentType('posts'));
+if (igContentTypeReels) igContentTypeReels.addEventListener('click', () => setInstagramContentType('reels'));
+if (igSelectTop5Btn) igSelectTop5Btn.addEventListener('click', selectIgTop5);
+if (igSelectBottom5Btn) igSelectBottom5Btn.addEventListener('click', selectIgBottom5);
+if (igClearSelectionBtn) igClearSelectionBtn.addEventListener('click', clearIgSelection);
+if (igDownloadSelectedBtn) igDownloadSelectedBtn.addEventListener('click', downloadIgSelectedVideos);
+
+if (igSortBySelect) {
+    igSortBySelect.addEventListener('change', (e) => {
+        const [field, order] = e.target.value.split('-');
+        sortIgResults(field, order);
+    });
+}
 
 // TikTok Mode Switching
 tkModeTabUrl.addEventListener('click', () => switchTikTokMode('url'));
@@ -2194,6 +2641,7 @@ tkSortBySelect.addEventListener('change', (e) => {
 
 // State for quick filters
 let ytQuickFilterDays = 0; // 0 = all
+let igQuickFilterDays = 0;
 let tkQuickFilterDays = 0;
 
 // Helper: Get date X days ago in YYYYMMDD format
@@ -2317,7 +2765,46 @@ function applyYouTubeMonthYearFilter() {
     }
 }
 
-// Instagram Quick Filters - REMOVED (profile mode not supported)
+// ==================== INSTAGRAM QUICK FILTERS ====================
+
+function applyInstagramQuickFilter(days) {
+    igQuickFilterDays = days;
+
+    // Update button states
+    document.querySelectorAll('.ig-quick-filter').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+    });
+
+    // If no results loaded yet, just store the preference
+    if (igUnfilteredResults.length === 0) {
+        return;
+    }
+
+    // Apply filter
+    if (days === 0) {
+        igProfileResults_data = [...igUnfilteredResults];
+    } else {
+        const cutoffDate = getDateDaysAgo(days);
+        igProfileResults_data = igUnfilteredResults.filter(video => {
+            const uploadDate = video.uploadDate || '';
+            return uploadDate >= cutoffDate;
+        });
+    }
+
+    // Update display
+    igSelectedVideos.clear();
+    updateIgSelectionCount();
+    calculateIgTopBottom();
+    sortIgResults(igCurrentSortField, igCurrentSortOrder);
+
+    if (igProfileResults_data.length > 0) {
+        enableIgSelectionButtons();
+        showStatus(`${igProfileResults_data.length} posts (ultimos ${days} dias)`, 'success');
+    } else {
+        disableIgSelectionButtons();
+        showStatus('Nenhum post encontrado neste periodo', 'info');
+    }
+}
 
 // ==================== TIKTOK QUICK FILTERS ====================
 
@@ -2375,7 +2862,13 @@ if (applyMonthYearFilter) {
     applyMonthYearFilter.addEventListener('click', applyYouTubeMonthYearFilter);
 }
 
-// Instagram Quick Filters - REMOVED (profile mode not supported)
+// Instagram Quick Filters
+document.querySelectorAll('.ig-quick-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const days = parseInt(btn.dataset.days);
+        applyInstagramQuickFilter(days);
+    });
+});
 
 // TikTok Quick Filters
 document.querySelectorAll('.tk-quick-filter').forEach(btn => {

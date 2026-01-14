@@ -453,21 +453,39 @@
         <!-- ==================== INSTAGRAM PANEL ==================== -->
         <div id="instagramPanel" class="platform-panel hidden" role="tabpanel" aria-labelledby="platformInstagram">
 
+            <!-- Mode Navigation -->
+            <nav class="mode-tabs" role="tablist" aria-label="Modo Instagram">
+                <button
+                    id="igModeTabUrl"
+                    class="mode-tab active"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="igUrlModeSection"
+                >
+                    <span class="tab-icon" aria-hidden="true">&#128279;</span>
+                    Links Diretos
+                </button>
+                <button
+                    id="igModeTabProfile"
+                    class="mode-tab"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="igProfileModeSection"
+                >
+                    <span class="tab-icon" aria-hidden="true">&#128250;</span>
+                    Meu Perfil
+                </button>
+            </nav>
+
             <main>
-                <!-- Instagram URL Mode Section (Only mode available) -->
+                <!-- Instagram URL Mode Section -->
                 <section
                     id="igUrlModeSection"
                     class="mode-section"
-                    role="region"
-                    aria-label="Download por links diretos"
+                    role="tabpanel"
+                    aria-labelledby="igModeTabUrl"
                 >
                     <div class="input-section">
-                        <!-- Info Notice -->
-                        <div class="info-notice">
-                            <span class="info-icon" aria-hidden="true">&#9432;</span>
-                            <span>Cole links diretos de Reels, Posts ou Stories do Instagram.</span>
-                        </div>
-
                         <label for="igUrlInput" class="visually-hidden">Cole os links do Instagram</label>
                         <textarea
                             id="igUrlInput"
@@ -510,6 +528,116 @@
 
                     <!-- Instagram Video List -->
                     <div id="igVideoList" class="video-list" role="list" aria-label="Videos do Instagram verificados"></div>
+                </section>
+
+                <!-- Instagram Profile Mode Section -->
+                <section
+                    id="igProfileModeSection"
+                    class="mode-section hidden"
+                    role="tabpanel"
+                    aria-labelledby="igModeTabProfile"
+                >
+                    <div class="input-section">
+                        <!-- Channel Header (Fixed Username) -->
+                        <header class="channel-header">
+                            <span class="channel-name">@nextleveldj1</span>
+                        </header>
+
+                        <!-- Content Type Tabs -->
+                        <div class="content-type-tabs" role="tablist" aria-label="Tipo de conteudo Instagram">
+                            <button
+                                id="igContentTypePosts"
+                                class="content-type-btn active"
+                                role="tab"
+                                aria-selected="true"
+                                data-type="posts"
+                            >
+                                Posts
+                            </button>
+                            <button
+                                id="igContentTypeReels"
+                                class="content-type-btn"
+                                role="tab"
+                                aria-selected="false"
+                                data-type="reels"
+                            >
+                                Reels
+                            </button>
+                        </div>
+
+                        <!-- Quick Date Filters - Instagram -->
+                        <div class="quick-filters-section">
+                            <label class="quick-filters-label">Filtro de Data:</label>
+                            <div class="quick-filters-row">
+                                <button class="quick-filter-btn ig-quick-filter" data-days="30">30 dias</button>
+                                <button class="quick-filter-btn ig-quick-filter" data-days="60">60 dias</button>
+                                <button class="quick-filter-btn ig-quick-filter" data-days="90">90 dias</button>
+                                <button class="quick-filter-btn ig-quick-filter" data-days="180">6 meses</button>
+                                <button class="quick-filter-btn ig-quick-filter" data-days="365">1 ano</button>
+                                <button class="quick-filter-btn ig-quick-filter active" data-days="0">Todos</button>
+                            </div>
+                        </div>
+
+                        <!-- Sort & Quality Controls -->
+                        <div class="search-controls">
+                            <div class="sort-section">
+                                <label for="igSortBySelect">Ordenar:</label>
+                                <select id="igSortBySelect" class="sort-select">
+                                    <option value="views-desc" selected>Views (maior)</option>
+                                    <option value="views-asc">Views (menor)</option>
+                                    <option value="date-desc">Mais recente</option>
+                                    <option value="date-asc">Mais antigo</option>
+                                </select>
+                            </div>
+
+                            <div class="quality-section">
+                                <label for="igProfileQualitySelect">Qualidade:</label>
+                                <select id="igProfileQualitySelect" class="quality-select">
+                                    <option value="best" selected>Melhor Disponivel</option>
+                                    <option value="1080">1080p Full HD</option>
+                                    <option value="720">720p HD</option>
+                                    <option value="480">480p SD</option>
+                                    <option value="audio">Apenas Audio (MP3)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Load Button -->
+                        <div class="search-input-row">
+                            <button id="igLoadProfileBtn" class="btn btn-instagram" style="width: 100%;">
+                                <span class="btn-icon" aria-hidden="true">&#128269;</span>
+                                <span id="igLoadBtnText">Carregar Posts</span>
+                            </button>
+                        </div>
+
+                        <!-- Selection Controls -->
+                        <div class="selection-controls">
+                            <div class="selection-buttons">
+                                <button id="igSelectTop5Btn" class="btn btn-selection btn-top5" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#9650;</span>
+                                    TOP 5
+                                </button>
+                                <button id="igSelectBottom5Btn" class="btn btn-selection btn-bottom5" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#9660;</span>
+                                    BOTTOM 5
+                                </button>
+                                <button id="igClearSelectionBtn" class="btn btn-secondary btn-small" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#10005;</span>
+                                    Limpar
+                                </button>
+                            </div>
+                            <div class="selection-info">
+                                <span id="igSelectionCount" role="status" aria-live="polite">0 selecionado(s)</span>
+                                <button id="igDownloadSelectedBtn" class="btn btn-success" disabled aria-disabled="true">
+                                    <span class="btn-icon" aria-hidden="true">&#11015;</span>
+                                    Baixar Selecionados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instagram Profile Results -->
+                    <div id="igProfileResults" class="search-results" role="list" aria-label="Conteudo do perfil"></div>
                 </section>
             </main>
         </div><!-- End Instagram Panel -->
