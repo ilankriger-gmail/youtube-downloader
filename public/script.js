@@ -36,6 +36,9 @@ const igClearSelectionBtn = document.getElementById('igClearSelectionBtn');
 const igDownloadSelectedBtn = document.getElementById('igDownloadSelectedBtn');
 const igSelectionCount = document.getElementById('igSelectionCount');
 const igProfileResults = document.getElementById('igProfileResults');
+const igSearchTypeAll = document.getElementById('igSearchTypeAll');
+const igSearchTypeKeyword = document.getElementById('igSearchTypeKeyword');
+const igKeywordInput = document.getElementById('igKeywordInput');
 
 // DOM Elements - TikTok
 const tkUrlInput = document.getElementById('tkUrlInput');
@@ -128,6 +131,8 @@ let igCurrentSortField = 'views';
 let igCurrentSortOrder = 'desc';
 let igTop5Ids = new Set();
 let igBottom5Ids = new Set();
+let igSearchType = 'all'; // 'all' | 'keyword'
+let igKeyword = '';
 
 // Fixed Instagram username
 const INSTAGRAM_USERNAME = 'nextleveldj1';
@@ -2780,21 +2785,39 @@ function applyInstagramQuickFilter(days) {
         btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
     });
 
+    // Apply all Instagram filters
+    applyIgFilters();
+}
+
+// Apply all Instagram filters (date + keyword)
+function applyIgFilters() {
     // If no results loaded yet, just store the preference
     if (igUnfilteredResults.length === 0) {
         return;
     }
 
-    // Apply filter
-    if (days === 0) {
-        igProfileResults_data = [...igUnfilteredResults];
-    } else {
-        const cutoffDate = getDateDaysAgo(days);
-        igProfileResults_data = igUnfilteredResults.filter(video => {
+    // Start with all results
+    let filtered = [...igUnfilteredResults];
+
+    // Apply date filter
+    if (igQuickFilterDays > 0) {
+        const cutoffDate = getDateDaysAgo(igQuickFilterDays);
+        filtered = filtered.filter(video => {
             const uploadDate = video.uploadDate || '';
             return uploadDate >= cutoffDate;
         });
     }
+
+    // Apply keyword filter
+    if (igSearchType === 'keyword' && igKeyword.trim()) {
+        const keyword = igKeyword.toLowerCase().trim();
+        filtered = filtered.filter(video => {
+            const title = (video.title || '').toLowerCase();
+            return title.includes(keyword);
+        });
+    }
+
+    igProfileResults_data = filtered;
 
     // Update display
     igSelectedVideos.clear();
@@ -2802,13 +2825,49 @@ function applyInstagramQuickFilter(days) {
     calculateIgTopBottom();
     sortIgResults(igCurrentSortField, igCurrentSortOrder);
 
+    const contentLabel = igContentType === 'posts' ? 'posts' : 'reels';
     if (igProfileResults_data.length > 0) {
         enableIgSelectionButtons();
-        showStatus(`${igProfileResults_data.length} posts (ultimos ${days} dias)`, 'success');
+        const keywordMsg = igSearchType === 'keyword' && igKeyword.trim() ? ` com "${igKeyword}"` : '';
+        const dateMsg = igQuickFilterDays > 0 ? ` (ultimos ${igQuickFilterDays} dias)` : '';
+        showStatus(`${igProfileResults_data.length} ${contentLabel}${keywordMsg}${dateMsg}`, 'success');
     } else {
         disableIgSelectionButtons();
-        showStatus('Nenhum post encontrado neste periodo', 'info');
+        showStatus('Nenhum conteudo encontrado com os filtros aplicados', 'info');
     }
+}
+
+// Set Instagram search type
+function setIgSearchType(type) {
+    igSearchType = type;
+
+    if (type === 'all') {
+        igSearchTypeAll.classList.add('active');
+        igSearchTypeKeyword.classList.remove('active');
+        igSearchTypeAll.setAttribute('aria-pressed', 'true');
+        igSearchTypeKeyword.setAttribute('aria-pressed', 'false');
+        igKeywordInput.disabled = true;
+        igKeywordInput.setAttribute('aria-disabled', 'true');
+        igKeywordInput.value = '';
+        igKeyword = '';
+    } else {
+        igSearchTypeAll.classList.remove('active');
+        igSearchTypeKeyword.classList.add('active');
+        igSearchTypeAll.setAttribute('aria-pressed', 'false');
+        igSearchTypeKeyword.setAttribute('aria-pressed', 'true');
+        igKeywordInput.disabled = false;
+        igKeywordInput.setAttribute('aria-disabled', 'false');
+        igKeywordInput.focus();
+    }
+
+    // Re-apply filters
+    applyIgFilters();
+}
+
+// Handle Instagram keyword input
+function handleIgKeywordInput() {
+    igKeyword = igKeywordInput.value;
+    applyIgFilters();
 }
 
 // ==================== TIKTOK QUICK FILTERS ====================
@@ -2927,6 +2986,20 @@ document.querySelectorAll('.ig-quick-filter').forEach(btn => {
         applyInstagramQuickFilter(days);
     });
 });
+
+// Instagram Search Type Buttons
+if (igSearchTypeAll) igSearchTypeAll.addEventListener('click', () => setIgSearchType('all'));
+if (igSearchTypeKeyword) igSearchTypeKeyword.addEventListener('click', () => setIgSearchType('keyword'));
+
+// Instagram Keyword Input
+if (igKeywordInput) {
+    igKeywordInput.addEventListener('input', handleIgKeywordInput);
+    igKeywordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleIgKeywordInput();
+        }
+    });
+}
 
 // TikTok Quick Filters
 document.querySelectorAll('.tk-quick-filter').forEach(btn => {
