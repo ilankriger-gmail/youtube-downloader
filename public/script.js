@@ -892,7 +892,7 @@ function clearFilters() {
 }
 
 async function performSearch() {
-    const query = searchInput.value.trim();
+    const query = searchInput ? searchInput.value.trim() : '';
 
     // DEBUG
     console.log('=== DEBUG performSearch ===');
@@ -906,8 +906,10 @@ async function performSearch() {
         return;
     }
 
-    searchBtn.disabled = true;
-    searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Carregando...';
+    if (searchBtn) {
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Carregando...';
+    }
 
     const typeLabels = {
         'videos': 'videos',
@@ -1025,12 +1027,16 @@ async function performSearch() {
 
     } catch (error) {
         showStatus('Erro: ' + error.message, 'error');
-        searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro</p><p class="hint">${error.message}</p></div>`;
+        if (searchResultsContainer) {
+            searchResultsContainer.innerHTML = `<div class="no-results"><p>Erro</p><p class="hint">${error.message}</p></div>`;
+        }
     } finally {
-        searchBtn.disabled = false;
-        searchBtn.innerHTML = searchType === 'all'
-            ? '<span class="btn-icon">&#128269;</span> Carregar'
-            : '<span class="btn-icon">&#128269;</span> Buscar';
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = searchType === 'all'
+                ? '<span class="btn-icon">&#128269;</span> Carregar'
+                : '<span class="btn-icon">&#128269;</span> Buscar';
+        }
     }
 }
 
@@ -1086,6 +1092,11 @@ function renderSearchResults() {
     console.log('=== renderSearchResults ===');
     console.log('searchResults.length:', searchResults.length);
     console.log('searchResultsContainer:', searchResultsContainer);
+
+    if (!searchResultsContainer) {
+        console.error('searchResultsContainer is null!');
+        return;
+    }
 
     searchResultsContainer.innerHTML = '';
 
@@ -1190,28 +1201,30 @@ function toggleVideoSelection(index) {
 function updateSelectionCount() {
     const total = searchResults.length;
     const selected = selectedVideos.size;
-    if (total > 0) {
-        selectionCount.textContent = `${total} videos | ${selected} selecionado(s)`;
-    } else {
-        selectionCount.textContent = `${selected} selecionado(s)`;
+    if (selectionCount) {
+        if (total > 0) {
+            selectionCount.textContent = `${total} videos | ${selected} selecionado(s)`;
+        } else {
+            selectionCount.textContent = `${selected} selecionado(s)`;
+        }
     }
 }
 
 function updateDownloadSelectedState() {
-    downloadSelectedBtn.disabled = selectedVideos.size === 0;
-    clearSelectionBtn.disabled = selectedVideos.size === 0;
+    if (downloadSelectedBtn) downloadSelectedBtn.disabled = selectedVideos.size === 0;
+    if (clearSelectionBtn) clearSelectionBtn.disabled = selectedVideos.size === 0;
 }
 
 function enableSelectionButtons() {
-    selectTop5Btn.disabled = false;
-    selectBottom5Btn.disabled = false;
+    if (selectTop5Btn) selectTop5Btn.disabled = false;
+    if (selectBottom5Btn) selectBottom5Btn.disabled = false;
 }
 
 function disableSelectionButtons() {
-    selectTop5Btn.disabled = true;
-    selectBottom5Btn.disabled = true;
-    clearSelectionBtn.disabled = true;
-    downloadSelectedBtn.disabled = true;
+    if (selectTop5Btn) selectTop5Btn.disabled = true;
+    if (selectBottom5Btn) selectBottom5Btn.disabled = true;
+    if (clearSelectionBtn) clearSelectionBtn.disabled = true;
+    if (downloadSelectedBtn) downloadSelectedBtn.disabled = true;
 }
 
 function selectTop5() {
@@ -1839,7 +1852,7 @@ function createIgResultItem(video, index) {
             <div class="result-meta">
                 <span class="result-channel">${video.channel || ''}</span>
                 <span class="result-separator">|</span>
-                <span class="result-views">${formatViews(video.views)} ${video.isVideo ? 'views' : 'likes'}</span>
+                <span class="result-views">${formatViews(video.views)} views</span>
                 ${video.duration ? `<span class="result-separator">|</span><span class="result-duration">${formatDuration(video.duration)}</span>` : ''}
                 ${dateFormatted ? `<span class="result-separator">|</span><span class="result-date">${dateFormatted}</span>` : ''}
             </div>
