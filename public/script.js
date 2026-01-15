@@ -749,9 +749,9 @@ function setContentType(type) {
     contentType = type;
 
     // Update tab buttons
-    contentTypeVideos.classList.toggle('active', type === 'videos');
-    contentTypeShorts.classList.toggle('active', type === 'shorts');
-    contentTypeLives.classList.toggle('active', type === 'lives');
+    if (contentTypeVideos) contentTypeVideos.classList.toggle('active', type === 'videos');
+    if (contentTypeShorts) contentTypeShorts.classList.toggle('active', type === 'shorts');
+    if (contentTypeLives) contentTypeLives.classList.toggle('active', type === 'lives');
 
     // Update ARIA
     updateContentTypeAria(type);
@@ -760,7 +760,7 @@ function setContentType(type) {
     searchResults = [];
     unfilteredResults = [];
     selectedVideos.clear();
-    searchResultsContainer.innerHTML = '';
+    if (searchResultsContainer) searchResultsContainer.innerHTML = '';
     updateSelectionCount();
     disableSelectionButtons();
 
@@ -770,7 +770,7 @@ function setContentType(type) {
         'shorts': 'shorts',
         'lives': 'transmissoes ao vivo'
     };
-    searchResultsContainer.innerHTML = `<div class="no-results"><p>Clique em "Carregar" para buscar ${typeLabels[type]} do canal</p></div>`;
+    if (searchResultsContainer) searchResultsContainer.innerHTML = `<div class="no-results"><p>Clique em "Carregar" para buscar ${typeLabels[type]} do canal</p></div>`;
 }
 
 // ==================== FILTER FUNCTIONS ====================
@@ -1478,9 +1478,9 @@ function updateModeTabsAria(activeMode) {
 
 // Update content type tabs ARIA
 function updateContentTypeAria(activeType) {
-    contentTypeVideos.setAttribute('aria-selected', activeType === 'videos');
-    contentTypeShorts.setAttribute('aria-selected', activeType === 'shorts');
-    contentTypeLives.setAttribute('aria-selected', activeType === 'lives');
+    if (contentTypeVideos) contentTypeVideos.setAttribute('aria-selected', activeType === 'videos');
+    if (contentTypeShorts) contentTypeShorts.setAttribute('aria-selected', activeType === 'shorts');
+    if (contentTypeLives) contentTypeLives.setAttribute('aria-selected', activeType === 'lives');
 }
 
 // Update search type buttons ARIA
@@ -2284,13 +2284,27 @@ async function loadTkProfile() {
             throw new Error(data.error || 'Falha ao carregar perfil');
         }
 
-        tkUnfilteredResults = data.videos || [];
+        // Filter out private/unpublished videos (0 views typically means private or friends-only)
+        const allVideos = data.videos || [];
+        const publicVideos = allVideos.filter(v => (v.views || 0) > 0);
+        const privateCount = allVideos.length - publicVideos.length;
+
+        tkUnfilteredResults = publicVideos;
         tkProfileResults_data = [...tkUnfilteredResults];
 
         if (tkProfileResults_data.length === 0) {
-            tkProfileResults.innerHTML = `<div class="no-results"><p>Nenhum video encontrado para @${username}</p></div>`;
-            showStatus('Nenhum conteudo encontrado', 'error');
+            let msg = `Nenhum video publico encontrado para @${username}`;
+            if (privateCount > 0) {
+                msg += ` (${privateCount} videos privados/nao listados foram ocultados)`;
+            }
+            tkProfileResults.innerHTML = `<div class="no-results"><p>${msg}</p></div>`;
+            showStatus('Nenhum conteudo publico encontrado', 'error');
             return;
+        }
+
+        // Show info about filtered private videos
+        if (privateCount > 0) {
+            console.log(`[TikTok] ${privateCount} videos privados/nao listados foram filtrados`);
         }
 
         // Calculate TOP/BOTTOM 5
@@ -2300,7 +2314,11 @@ async function loadTkProfile() {
         sortTkResults('views', 'desc');
 
         enableTkSelectionButtons();
-        showStatus(`${tkProfileResults_data.length} videos carregados de @${username}`, 'success');
+        let statusMsg = `${tkProfileResults_data.length} videos carregados de @${username}`;
+        if (privateCount > 0) {
+            statusMsg += ` (${privateCount} privados filtrados)`;
+        }
+        showStatus(statusMsg, 'success');
 
     } catch (error) {
         showStatus('Erro: ' + error.message, 'error');
