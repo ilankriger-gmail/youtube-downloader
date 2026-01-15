@@ -2868,12 +2868,15 @@ function applyIgFilters() {
         });
     }
 
-    // Apply keyword filter
+    // Apply keyword filter (word boundary match)
     if (igSearchType === 'keyword' && igKeyword.trim()) {
-        const keyword = igKeyword.toLowerCase().trim();
+        const keyword = igKeyword.trim();
+        // Escape special regex characters
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
         filtered = filtered.filter(video => {
-            const title = (video.title || '').toLowerCase();
-            return title.includes(keyword);
+            const title = video.title || '';
+            return regex.test(title);
         });
     }
 
@@ -2967,12 +2970,15 @@ function applyTkFilters() {
         });
     }
 
-    // Apply keyword filter
+    // Apply keyword filter (word boundary match)
     if (tkSearchType === 'keyword' && tkKeyword.trim()) {
-        const keyword = tkKeyword.toLowerCase().trim();
+        const keyword = tkKeyword.trim();
+        // Escape special regex characters
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
         filtered = filtered.filter(video => {
-            const title = (video.title || '').toLowerCase();
-            return title.includes(keyword);
+            const title = video.title || '';
+            return regex.test(title);
         });
     }
 
