@@ -118,6 +118,35 @@ const filterDateEnd = document.getElementById('filterDateEnd');
 const applyFiltersBtn = document.getElementById('applyFiltersBtn');
 const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
+// DOM Elements - Channel Inputs
+const ytChannelInput = document.getElementById('ytChannelInput');
+const ytVerifyChannelBtn = document.getElementById('ytVerifyChannelBtn');
+const ytChannelPreview = document.getElementById('ytChannelPreview');
+const ytChannelAvatar = document.getElementById('ytChannelAvatar');
+const ytChannelName = document.getElementById('ytChannelName');
+const ytChannelSubs = document.getElementById('ytChannelSubs');
+
+const igChannelInput = document.getElementById('igChannelInput');
+const igVerifyChannelBtn = document.getElementById('igVerifyChannelBtn');
+const igChannelPreview = document.getElementById('igChannelPreview');
+const igChannelAvatar = document.getElementById('igChannelAvatar');
+const igChannelNameEl = document.getElementById('igChannelName');
+const igChannelFollowers = document.getElementById('igChannelFollowers');
+
+const tkChannelInput = document.getElementById('tkChannelInput');
+const tkVerifyChannelBtn = document.getElementById('tkVerifyChannelBtn');
+const tkChannelPreview = document.getElementById('tkChannelPreview');
+const tkChannelAvatar = document.getElementById('tkChannelAvatar');
+const tkChannelNameEl = document.getElementById('tkChannelName');
+const tkChannelFollowers = document.getElementById('tkChannelFollowers');
+
+// Verified channels state
+let verifiedChannels = {
+    youtube: { username: 'nextleveldj1', verified: false },
+    instagram: { username: 'nextleveldj1', verified: false },
+    tiktok: { username: 'nextleveldj', verified: false }
+};
+
 // DOM Elements - Shared
 const statusMessage = document.getElementById('statusMessage');
 const overallProgress = document.getElementById('overallProgress');
@@ -717,30 +746,15 @@ async function openFolder() {
 // ==================== SEARCH MODE FUNCTIONS ====================
 
 function setSearchType(type) {
-    searchType = type;
-
-    if (type === 'all') {
-        if (searchTypeAll) searchTypeAll.classList.add('active');
-        if (searchTypeKeyword) searchTypeKeyword.classList.remove('active');
-        if (searchInput) {
-            searchInput.disabled = true;
-            searchInput.setAttribute('aria-disabled', 'true');
-            searchInput.value = '';
-        }
-        if (searchBtn) searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Carregar';
-    } else {
-        if (searchTypeAll) searchTypeAll.classList.remove('active');
-        if (searchTypeKeyword) searchTypeKeyword.classList.add('active');
-        if (searchInput) {
-            searchInput.disabled = false;
-            searchInput.setAttribute('aria-disabled', 'false');
-            searchInput.focus();
-        }
-        if (searchBtn) searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
+    // Simplified - always enable search input
+    searchType = 'keyword';
+    if (searchInput) {
+        searchInput.disabled = false;
+        searchInput.focus();
     }
-
-    // Update ARIA
-    updateSearchTypeAria(type);
+    if (searchBtn) {
+        searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
+    }
 }
 
 // ==================== CONTENT TYPE FUNCTIONS ====================
@@ -751,7 +765,6 @@ function setContentType(type) {
     // Update tab buttons
     if (contentTypeVideos) contentTypeVideos.classList.toggle('active', type === 'videos');
     if (contentTypeShorts) contentTypeShorts.classList.toggle('active', type === 'shorts');
-    if (contentTypeLives) contentTypeLives.classList.toggle('active', type === 'lives');
 
     // Update ARIA
     updateContentTypeAria(type);
@@ -765,12 +778,10 @@ function setContentType(type) {
     disableSelectionButtons();
 
     // Show type-specific placeholder
-    const typeLabels = {
-        'videos': 'videos',
-        'shorts': 'shorts',
-        'lives': 'transmissoes ao vivo'
-    };
-    if (searchResultsContainer) searchResultsContainer.innerHTML = `<div class="no-results"><p>Clique em "Carregar" para buscar ${typeLabels[type]} do canal</p></div>`;
+    const typeLabel = type === 'shorts' ? 'shorts' : 'videos';
+    if (searchResultsContainer) {
+        searchResultsContainer.innerHTML = `<div class="no-results"><p>Digite um termo e clique em "Buscar" para encontrar ${typeLabel} no YouTube</p></div>`;
+    }
 }
 
 // ==================== FILTER FUNCTIONS ====================
@@ -894,115 +905,62 @@ function clearFilters() {
 async function performSearch() {
     const query = searchInput ? searchInput.value.trim() : '';
 
-    // DEBUG
-    console.log('=== DEBUG performSearch ===');
-    console.log('contentType:', contentType);
-    console.log('searchType:', searchType);
-    console.log('query:', query);
-
-    // For keyword search, require a query
-    if (searchType === 'keyword' && !query) {
-        showStatus('Digite uma palavra-chave para buscar', 'error');
-        return;
-    }
+    // Query is optional - can list all videos from channel without search term
 
     if (searchBtn) {
         searchBtn.disabled = true;
-        searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Carregando...';
+        searchBtn.innerHTML = '<span class="btn-icon">&#8987;</span> Buscando...';
     }
 
-    const typeLabels = {
-        'videos': 'videos',
-        'shorts': 'shorts',
-        'lives': 'transmissoes'
-    };
-    const typeLabel = typeLabels[contentType];
+    const typeLabel = contentType === 'shorts' ? 'shorts' : 'videos';
 
-    const loadingMsg = searchType === 'all'
-        ? `Carregando ${typeLabel} do canal nextleveldj1...`
-        : `Buscando "${query}" nos ${typeLabel} do canal...`;
-
-    console.log('searchResultsContainer:', searchResultsContainer);
     if (!searchResultsContainer) {
-        console.error('searchResultsContainer is null!');
         showStatus('Erro: container de resultados nao encontrado', 'error');
         return;
     }
-    searchResultsContainer.innerHTML = `<div class="loading">${loadingMsg}<br><small>Isso pode levar ate 2 minutos...</small></div>`;
+
+    // Get username from input field
+    const username = ytChannelInput ? ytChannelInput.value.trim().replace('@', '') : 'nextleveldj1';
+
+    const loadingMsg = query
+        ? `Buscando "${query}" no canal @${username}...`
+        : `Listando ${typeLabel} do canal @${username}...`;
+    searchResultsContainer.innerHTML = `<div class="loading">${loadingMsg}<br><small>Isso pode levar alguns segundos...</small></div>`;
     selectedVideos.clear();
     updateSelectionCount();
     disableSelectionButtons();
 
     try {
-        let response;
-        let endpoint;
+        const response = await fetch('/api/youtube-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: query,
+                type: contentType,
+                limit: 100,
+                username: username
+            })
+        });
 
-        if (searchType === 'all') {
-            // List content by type
-            const endpoints = {
-                'videos': '/api/channel-videos',
-                'shorts': '/api/channel-shorts',
-                'lives': '/api/channel-lives'
-            };
-            endpoint = endpoints[contentType];
+        const data = await response.json();
 
-            response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ limit: 500 })
-            });
-        } else {
-            // Search by keyword - fetch all from selected type and filter locally
-            const endpoints = {
-                'videos': '/api/channel-videos',
-                'shorts': '/api/channel-shorts',
-                'lives': '/api/channel-lives'
-            };
-            endpoint = endpoints[contentType];
-
-            response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ limit: 500 })
-            });
-        }
-
-        console.log('endpoint used:', endpoint);
-
-        let data = await response.json();
-
-        // Check if response is OK or has error
         if (!response.ok || data.error) {
-            throw new Error(data.error || 'Falha ao carregar conteudo');
+            throw new Error(data.error || 'Busca falhou');
         }
 
-        // Check if data.videos exists
         if (!data.videos) {
             throw new Error('Resposta invalida do servidor');
         }
 
-        console.log('data.videos.length BEFORE filter:', data.videos.length);
-
-        // If keyword search, filter by title
-        if (searchType === 'keyword' && query) {
-            const queryLower = query.toLowerCase();
-            console.log('Filtering by:', queryLower);
-            data.videos = data.videos.filter(v =>
-                v.title.toLowerCase().includes(queryLower)
-            );
-            data.count = data.videos.length;
-            console.log('data.videos.length AFTER filter:', data.videos.length);
-        }
-
-        // Store both filtered and unfiltered results
+        // Store results
         unfilteredResults = data.videos;
         searchResults = [...unfilteredResults];
 
         if (searchResults.length === 0) {
-            const msg = searchType === 'all'
-                ? `Nenhum ${typeLabel} encontrado no canal`
-                : `Nenhum video encontrado para "${query}"`;
-            searchResultsContainer.innerHTML = `<div class="no-results"><p>${msg}</p><p class="hint">Tente outros filtros</p></div>`;
+            const noResultsMsg = query
+                ? `Nenhum ${typeLabel} encontrado para "${query}"`
+                : `Nenhum ${typeLabel} encontrado no canal`;
+            searchResultsContainer.innerHTML = `<div class="no-results"><p>${noResultsMsg}</p><p class="hint">Tente outros termos de busca</p></div>`;
             showStatus('Nenhum resultado encontrado', 'error');
             return;
         }
@@ -1011,19 +969,15 @@ async function performSearch() {
         if (hasActiveFilters()) {
             applyFilters();
         } else {
-            // Calculate TOP 5 and BOTTOM 5 by views
             calculateTopBottom();
-
-            // Sort by views (highest first) by default
             sortSearchResults('views', 'desc');
-
             enableSelectionButtons();
         }
 
-        const successMsg = searchType === 'all'
-            ? `${data.count} ${typeLabel} carregados do canal`
-            : `${data.count} videos encontrados para "${query}"`;
-        showStatus(successMsg, 'success');
+        const statusMsg = query
+            ? `${data.count} ${typeLabel} encontrados para "${query}" em @${username}`
+            : `${data.count} ${typeLabel} encontrados em @${username}`;
+        showStatus(statusMsg, 'success');
 
     } catch (error) {
         showStatus('Erro: ' + error.message, 'error');
@@ -1033,9 +987,7 @@ async function performSearch() {
     } finally {
         if (searchBtn) {
             searchBtn.disabled = false;
-            searchBtn.innerHTML = searchType === 'all'
-                ? '<span class="btn-icon">&#128269;</span> Carregar'
-                : '<span class="btn-icon">&#128269;</span> Buscar';
+            searchBtn.innerHTML = '<span class="btn-icon">&#128269;</span> Buscar';
         }
     }
 }
@@ -1392,7 +1344,104 @@ function downloadSearchVideo(video) {
     });
 }
 
+// ==================== CHANNEL VERIFICATION ====================
+
+function formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+}
+
+async function verifyChannel(platform) {
+    let input, btn, preview, avatar, nameEl, subsEl;
+
+    switch (platform) {
+        case 'youtube':
+            input = ytChannelInput;
+            btn = ytVerifyChannelBtn;
+            preview = ytChannelPreview;
+            avatar = ytChannelAvatar;
+            nameEl = ytChannelName;
+            subsEl = ytChannelSubs;
+            break;
+        case 'instagram':
+            input = igChannelInput;
+            btn = igVerifyChannelBtn;
+            preview = igChannelPreview;
+            avatar = igChannelAvatar;
+            nameEl = igChannelNameEl;
+            subsEl = igChannelFollowers;
+            break;
+        case 'tiktok':
+            input = tkChannelInput;
+            btn = tkVerifyChannelBtn;
+            preview = tkChannelPreview;
+            avatar = tkChannelAvatar;
+            nameEl = tkChannelNameEl;
+            subsEl = tkChannelFollowers;
+            break;
+    }
+
+    if (!input || !btn) return;
+
+    const username = input.value.trim().replace('@', '');
+    if (!username) {
+        showStatus('Digite um username', 'error');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">&#8987;</span> Verificando...';
+    if (preview) preview.classList.add('hidden');
+
+    try {
+        const response = await fetch('/api/verify-channel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform, username })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            throw new Error(data.error || 'Canal nao encontrado');
+        }
+
+        // Update verified state
+        verifiedChannels[platform] = { username, verified: true };
+
+        // Show preview
+        if (preview && nameEl && subsEl) {
+            if (avatar && data.channel.avatar) {
+                avatar.src = data.channel.avatar;
+                avatar.style.display = 'block';
+            } else if (avatar) {
+                avatar.style.display = 'none';
+            }
+            nameEl.textContent = data.channel.name;
+            const count = data.channel.subscribers || data.channel.followers || 0;
+            subsEl.textContent = count > 0 ? formatNumber(count) + ' seguidores' : 'Canal verificado';
+            preview.classList.remove('hidden');
+        }
+
+        showStatus(`Canal @${username} verificado!`, 'success');
+
+    } catch (error) {
+        verifiedChannels[platform] = { username, verified: false };
+        showStatus('Erro: ' + error.message, 'error');
+        if (preview) preview.classList.add('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">&#10003;</span> Verificar';
+    }
+}
+
 // ==================== EVENT LISTENERS ====================
+
+// Channel verification
+if (ytVerifyChannelBtn) ytVerifyChannelBtn.addEventListener('click', () => verifyChannel('youtube'));
+if (igVerifyChannelBtn) igVerifyChannelBtn.addEventListener('click', () => verifyChannel('instagram'));
+if (tkVerifyChannelBtn) tkVerifyChannelBtn.addEventListener('click', () => verifyChannel('tiktok'));
 
 // Mode switching
 if (modeTabUrl) modeTabUrl.addEventListener('click', () => switchMode('url'));
@@ -1704,7 +1753,7 @@ async function downloadAllIgVideos() {
 // ==================== INSTAGRAM PROFILE FUNCTIONS ====================
 
 async function loadIgProfile() {
-    const username = INSTAGRAM_USERNAME;
+    const username = igChannelInput ? igChannelInput.value.trim().replace('@', '') : 'nextleveldj1';
 
     igLoadProfileBtn.disabled = true;
     const igLoadBtnText = document.getElementById('igLoadBtnText');
@@ -2266,11 +2315,9 @@ async function downloadAllTkVideos() {
 }
 
 // TikTok Profile Functions
-// Fixed username for TikTok profile
-const TIKTOK_USERNAME = 'nextleveldj';
 
 async function loadTkProfile() {
-    const username = TIKTOK_USERNAME;
+    const username = tkChannelInput ? tkChannelInput.value.trim().replace('@', '') : 'nextleveldj';
 
     tkLoadProfileBtn.disabled = true;
     const tkLoadBtnText = document.getElementById('tkLoadBtnText');

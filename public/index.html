@@ -79,8 +79,8 @@
                 aria-selected="true"
                 aria-controls="searchModeSection"
             >
-                <span class="tab-icon" aria-hidden="true">&#128250;</span>
-                Meu Canal
+                <span class="tab-icon" aria-hidden="true">&#128269;</span>
+                Buscar
             </button>
         </nav>
 
@@ -165,10 +165,29 @@
                 aria-labelledby="modeTabSearch"
             >
                 <div class="input-section">
-                    <!-- Channel Header -->
-                    <header class="channel-header">
-                        <span class="channel-name">nextleveldj1</span>
-                    </header>
+                    <!-- Channel Input with Verify -->
+                    <div class="channel-input-section">
+                        <div class="channel-input-row">
+                            <span class="channel-at">@</span>
+                            <input
+                                type="text"
+                                id="ytChannelInput"
+                                class="channel-input"
+                                value="nextleveldj1"
+                                placeholder="username do canal"
+                            >
+                            <button id="ytVerifyChannelBtn" class="btn btn-accent btn-small">
+                                <span class="btn-icon">&#10003;</span> Verificar
+                            </button>
+                        </div>
+                        <div id="ytChannelPreview" class="channel-preview hidden">
+                            <img id="ytChannelAvatar" class="channel-avatar" src="" alt="">
+                            <div class="channel-info">
+                                <span id="ytChannelName" class="channel-name"></span>
+                                <span id="ytChannelSubs" class="channel-subs"></span>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Content Type Tabs -->
                     <div class="content-type-tabs" role="tablist" aria-label="Tipo de conteudo">
@@ -189,15 +208,6 @@
                             data-type="shorts"
                         >
                             Shorts
-                        </button>
-                        <button
-                            id="contentTypeLives"
-                            class="content-type-btn"
-                            role="tab"
-                            aria-selected="false"
-                            data-type="lives"
-                        >
-                            Lives
                         </button>
                     </div>
 
@@ -330,31 +340,19 @@
                         </div>
                     </div>
 
-                    <!-- Search Type Selector -->
-                    <div class="search-type-selector" role="group" aria-label="Tipo de busca">
-                        <button id="searchTypeAll" class="search-type-btn active" aria-pressed="true">
-                            Listar Todos
-                        </button>
-                        <button id="searchTypeKeyword" class="search-type-btn" aria-pressed="false">
-                            Buscar por Palavra
-                        </button>
-                    </div>
-
                     <!-- Search Input -->
                     <div class="search-input-row">
-                        <label for="searchInput" class="visually-hidden">Buscar videos</label>
+                        <label for="searchInput" class="visually-hidden">Buscar videos no canal @nextleveldj1</label>
                         <input
                             type="text"
                             id="searchInput"
                             class="search-input"
-                            placeholder="Digite para filtrar videos do canal..."
+                            placeholder="Filtrar por palavra (opcional) - Canal @nextleveldj1"
                             autocomplete="off"
-                            disabled
-                            aria-disabled="true"
                         >
                         <button id="searchBtn" class="btn btn-accent">
                             <span class="btn-icon" aria-hidden="true">&#128269;</span>
-                            <span id="searchBtnText">Carregar</span>
+                            <span id="searchBtnText">Buscar</span>
                         </button>
                     </div>
 
@@ -538,10 +536,29 @@
                     aria-labelledby="igModeTabProfile"
                 >
                     <div class="input-section">
-                        <!-- Channel Header (Fixed Username) -->
-                        <header class="channel-header">
-                            <span class="channel-name">@nextleveldj1</span>
-                        </header>
+                        <!-- Channel Input with Verify -->
+                        <div class="channel-input-section">
+                            <div class="channel-input-row">
+                                <span class="channel-at">@</span>
+                                <input
+                                    type="text"
+                                    id="igChannelInput"
+                                    class="channel-input"
+                                    value="nextleveldj1"
+                                    placeholder="username do perfil"
+                                >
+                                <button id="igVerifyChannelBtn" class="btn btn-instagram btn-small">
+                                    <span class="btn-icon">&#10003;</span> Verificar
+                                </button>
+                            </div>
+                            <div id="igChannelPreview" class="channel-preview hidden">
+                                <img id="igChannelAvatar" class="channel-avatar" src="" alt="">
+                                <div class="channel-info">
+                                    <span id="igChannelName" class="channel-name"></span>
+                                    <span id="igChannelFollowers" class="channel-subs"></span>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Content Type Tabs -->
                         <div class="content-type-tabs" role="tablist" aria-label="Tipo de conteudo Instagram">
@@ -754,10 +771,29 @@
                     aria-labelledby="tkModeTabProfile"
                 >
                     <div class="input-section">
-                        <!-- Channel Header (Fixed Username) -->
-                        <header class="channel-header">
-                            <span class="channel-name">@nextleveldj</span>
-                        </header>
+                        <!-- Channel Input with Verify -->
+                        <div class="channel-input-section">
+                            <div class="channel-input-row">
+                                <span class="channel-at">@</span>
+                                <input
+                                    type="text"
+                                    id="tkChannelInput"
+                                    class="channel-input"
+                                    value="nextleveldj"
+                                    placeholder="username do perfil"
+                                >
+                                <button id="tkVerifyChannelBtn" class="btn btn-tiktok btn-small">
+                                    <span class="btn-icon">&#10003;</span> Verificar
+                                </button>
+                            </div>
+                            <div id="tkChannelPreview" class="channel-preview hidden">
+                                <img id="tkChannelAvatar" class="channel-avatar" src="" alt="">
+                                <div class="channel-info">
+                                    <span id="tkChannelName" class="channel-name"></span>
+                                    <span id="tkChannelFollowers" class="channel-subs"></span>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Search Type Selector - TikTok -->
                         <div class="search-type-selector" role="group" aria-label="Tipo de busca TikTok">

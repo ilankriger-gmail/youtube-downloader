@@ -129,16 +129,175 @@ function sanitizeFilename(filename) {
     return filename.replace(/[/\\?%*:|"<>]/g, '-').substring(0, 200);
 }
 
+// ==================== CHANNEL VERIFICATION ====================
+
+// Verify YouTube channel and get info
+async function verifyYouTubeChannel(username) {
+    return new Promise((resolve, reject) => {
+        const url = `https://www.youtube.com/@${username}`;
+        console.log(`[YOUTUBE] Verifying channel: ${url}`);
+
+        const ytdlp = spawn('yt-dlp', [
+            '--dump-json',
+            '--playlist-items', '0',
+            '--no-download',
+            '--no-warnings',
+            url
+        ]);
+
+        let stdout = '';
+        let stderr = '';
+
+        const timeout = setTimeout(() => {
+            ytdlp.kill('SIGTERM');
+            reject(new Error('Verificacao expirou'));
+        }, 30000);
+
+        ytdlp.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        ytdlp.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        ytdlp.on('close', (code) => {
+            clearTimeout(timeout);
+
+            if (code !== 0 || !stdout.trim()) {
+                reject(new Error('Canal nao encontrado'));
+                return;
+            }
+
+            try {
+                const info = JSON.parse(stdout.split('\n')[0]);
+                resolve({
+                    username: username,
+                    name: info.channel || info.uploader || username,
+                    avatar: info.thumbnail || '',
+                    subscribers: info.channel_follower_count || 0,
+                    url: url
+                });
+            } catch (error) {
+                reject(new Error('Erro ao processar dados do canal'));
+            }
+        });
+
+        ytdlp.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+        });
+    });
+}
+
+// Verify TikTok profile and get info
+async function verifyTikTokChannel(username) {
+    return new Promise((resolve, reject) => {
+        const url = `https://www.tiktok.com/@${username}`;
+        console.log(`[TIKTOK] Verifying profile: ${url}`);
+
+        const ytdlp = spawn('yt-dlp', [
+            '--dump-json',
+            '--playlist-items', '1',
+            '--no-download',
+            '--no-warnings',
+            '--cookies-from-browser', 'chrome',
+            url
+        ]);
+
+        let stdout = '';
+        let stderr = '';
+
+        const timeout = setTimeout(() => {
+            ytdlp.kill('SIGTERM');
+            reject(new Error('Verificacao expirou'));
+        }, 30000);
+
+        ytdlp.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        ytdlp.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        ytdlp.on('close', (code) => {
+            clearTimeout(timeout);
+
+            if (code !== 0 || !stdout.trim()) {
+                reject(new Error('Perfil nao encontrado'));
+                return;
+            }
+
+            try {
+                const info = JSON.parse(stdout.split('\n')[0]);
+                resolve({
+                    username: username,
+                    name: info.creator || info.uploader || username,
+                    avatar: info.thumbnail || '',
+                    followers: info.uploader_follower_count || 0,
+                    url: url
+                });
+            } catch (error) {
+                reject(new Error('Erro ao processar dados do perfil'));
+            }
+        });
+
+        ytdlp.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+        });
+    });
+}
+
+// Channel verification endpoint
+app.post('/api/verify-channel', async (req, res) => {
+    const { platform, username } = req.body;
+
+    if (!username || !platform) {
+        return res.status(400).json({ error: 'Plataforma e username sao obrigatorios' });
+    }
+
+    const cleanUsername = username.replace('@', '').trim();
+
+    try {
+        let channelInfo;
+
+        switch (platform) {
+            case 'youtube':
+                channelInfo = await verifyYouTubeChannel(cleanUsername);
+                break;
+            case 'tiktok':
+                channelInfo = await verifyTikTokChannel(cleanUsername);
+                break;
+            case 'instagram':
+                // Instagram uses existing profile endpoint
+                channelInfo = {
+                    username: cleanUsername,
+                    name: cleanUsername,
+                    avatar: '',
+                    followers: 0,
+                    url: `https://www.instagram.com/${cleanUsername}`
+                };
+                break;
+            default:
+                return res.status(400).json({ error: 'Plataforma invalida' });
+        }
+
+        res.json({ success: true, channel: channelInfo });
+    } catch (error) {
+        console.error(`[${platform.toUpperCase()}] Verify error:`, error.message);
+        res.status(404).json({ error: error.message || 'Canal nao encontrado' });
+    }
+});
+
 // ==================== YOUTUBE SEARCH ====================
 
-// Canal fixo para busca
-const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@nextleveldj1';
-
-// List videos from the fixed YouTube channel
-async function listChannelVideos(type = 'videos', limit = 100) {
+// List videos from a YouTube channel
+async function listChannelVideos(username, type = 'videos', limit = 100) {
     return new Promise((resolve, reject) => {
         const channelTab = type === 'shorts' ? '/shorts' : '/videos';
-        const url = `${YOUTUBE_CHANNEL_URL}${channelTab}`;
+        const url = `https://www.youtube.com/@${username}${channelTab}`;
 
         console.log(`[YOUTUBE] Listing ${type} from channel: ${url} (limit: ${limit})`);
 
@@ -148,6 +307,7 @@ async function listChannelVideos(type = 'videos', limit = 100) {
             '--no-download',
             '--no-warnings',
             '--ignore-errors',
+            '--extractor-args', 'youtube:lang=pt',
             '--playlist-end', String(limit),
             url
         ]);
@@ -220,13 +380,15 @@ async function listChannelVideos(type = 'videos', limit = 100) {
     });
 }
 
-// YouTube search endpoint - busca apenas no canal @nextleveldj1
+// YouTube search endpoint - busca no canal especificado
 app.post('/api/youtube-search', async (req, res) => {
-    const { query, type = 'videos', limit = 100 } = req.body;
+    const { query, type = 'videos', limit = 100, username = 'nextleveldj1' } = req.body;
+
+    const cleanUsername = username.replace('@', '').trim();
 
     try {
-        // Lista videos do canal fixo
-        let videos = await listChannelVideos(type, Math.min(limit, 200));
+        // Lista videos do canal especificado
+        let videos = await listChannelVideos(cleanUsername, type, Math.min(limit, 200));
 
         // Se houver query, filtra os resultados pelo termo
         if (query && query.trim()) {
@@ -240,6 +402,7 @@ app.post('/api/youtube-search', async (req, res) => {
         res.json({
             query: query ? query.trim() : '',
             type: type,
+            username: cleanUsername,
             count: videos.length,
             videos: videos
         });

@@ -77,7 +77,7 @@ def fetch_profile(username, content_type='posts', limit=50, session_file=None):
                 "title": (post.caption or "")[:200] if post.caption else f"Post de @{username}",
                 "thumbnail": post.url,
                 "channel": f"@{username}",
-                "views": post.video_view_count if post.is_video else post.likes,
+                "views": (post.video_view_count or post.likes or 0) if post.is_video else (post.likes or 0),
                 "likes": post.likes,
                 "duration": post.video_duration if post.is_video else 0,
                 "uploadDate": post.date_utc.strftime("%Y%m%d") if post.date_utc else "",
