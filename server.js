@@ -129,12 +129,18 @@ function sanitizeFilename(filename) {
     return filename.replace(/[/\\?%*:|"<>]/g, '-').substring(0, 200);
 }
 
-// Search YouTube using yt-dlp
-async function searchYouTube(query, limit = 100) {
-    return new Promise((resolve, reject) => {
-        const searchQuery = `ytsearch${limit}:${query}`;
+// ==================== YOUTUBE SEARCH ====================
 
-        console.log(`[SEARCH] Searching YouTube for: "${query}" (limit: ${limit})`);
+// Canal fixo para busca
+const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@nextleveldj1';
+
+// List videos from the fixed YouTube channel
+async function listChannelVideos(type = 'videos', limit = 100) {
+    return new Promise((resolve, reject) => {
+        const channelTab = type === 'shorts' ? '/shorts' : '/videos';
+        const url = `${YOUTUBE_CHANNEL_URL}${channelTab}`;
+
+        console.log(`[YOUTUBE] Listing ${type} from channel: ${url} (limit: ${limit})`);
 
         const ytdlp = spawn('yt-dlp', [
             '--dump-json',
@@ -142,18 +148,18 @@ async function searchYouTube(query, limit = 100) {
             '--no-download',
             '--no-warnings',
             '--ignore-errors',
-            '--extractor-args', 'youtube:lang=pt',
-            searchQuery
+            '--playlist-end', String(limit),
+            url
         ]);
 
         let stdout = '';
         let stderr = '';
 
-        // Timeout after 90 seconds
+        // Timeout after 120 seconds (channel listing can take longer)
         const timeout = setTimeout(() => {
             ytdlp.kill('SIGTERM');
-            reject(new Error('Search timeout - took too long'));
-        }, 90000);
+            reject(new Error('Busca expirou - tente novamente'));
+        }, 120000);
 
         ytdlp.stdout.on('data', (data) => {
             stdout += data.toString();
@@ -167,7 +173,7 @@ async function searchYouTube(query, limit = 100) {
             clearTimeout(timeout);
 
             if (code !== 0 && stdout.length === 0) {
-                reject(new Error(stderr || 'Search failed'));
+                reject(new Error(stderr || 'Busca falhou'));
                 return;
             }
 
@@ -178,11 +184,17 @@ async function searchYouTube(query, limit = 100) {
                 for (const line of lines) {
                     try {
                         const info = JSON.parse(line);
+
+                        // Filter shorts by duration if type is shorts
+                        if (type === 'shorts' && info.duration && info.duration > 60) {
+                            continue; // Skip videos longer than 60s when searching shorts
+                        }
+
                         videos.push({
                             id: info.id,
                             url: info.url || `https://www.youtube.com/watch?v=${info.id}`,
-                            title: info.title || 'Unknown Title',
-                            channel: info.channel || info.uploader || 'Unknown',
+                            title: info.title || 'Sem titulo',
+                            channel: info.channel || info.uploader || 'nextleveldj1',
                             duration: info.duration || 0,
                             views: info.view_count || 0,
                             thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
@@ -194,10 +206,10 @@ async function searchYouTube(query, limit = 100) {
                     }
                 }
 
-                console.log(`[SEARCH] Found ${videos.length} videos for "${query}"`);
+                console.log(`[YOUTUBE] Found ${videos.length} ${type} from channel`);
                 resolve(videos);
             } catch (error) {
-                reject(new Error('Failed to parse search results'));
+                reject(new Error('Erro ao processar resultados'));
             }
         });
 
@@ -208,85 +220,32 @@ async function searchYouTube(query, limit = 100) {
     });
 }
 
-// YouTube search endpoint
-app.post('/api/search', async (req, res) => {
-    const { query, limit = 100, channelOnly = false } = req.body;
+// YouTube search endpoint - busca apenas no canal @nextleveldj1
+app.post('/api/youtube-search', async (req, res) => {
+    const { query, type = 'videos', limit = 100 } = req.body;
 
     try {
-        let results;
+        // Lista videos do canal fixo
+        let videos = await listChannelVideos(type, Math.min(limit, 200));
 
-        if (channelOnly && query) {
-            // Search within channel by keyword
-            results = await searchChannelByKeyword(query.trim(), limit);
-        } else if (query) {
-            // General YouTube search
-            results = await searchYouTube(query.trim(), Math.min(limit, 100));
-        } else {
-            return res.status(400).json({ error: 'Search query is required' });
+        // Se houver query, filtra os resultados pelo termo
+        if (query && query.trim()) {
+            const searchTerm = query.trim().toLowerCase();
+            videos = videos.filter(v =>
+                v.title.toLowerCase().includes(searchTerm)
+            );
+            console.log(`[YOUTUBE] Filtered to ${videos.length} results for "${searchTerm}"`);
         }
 
         res.json({
-            query: query ? query.trim() : 'all',
-            count: results.length,
-            videos: results
+            query: query ? query.trim() : '',
+            type: type,
+            count: videos.length,
+            videos: videos
         });
     } catch (error) {
-        console.error('[SEARCH] Error:', error.message);
-        res.status(500).json({ error: error.message || 'Search failed' });
-    }
-});
-
-// List all videos from channel
-app.post('/api/channel-videos', async (req, res) => {
-    const { limit = 100 } = req.body;
-
-    try {
-        const results = await getChannelContent('videos', limit);
-        res.json({
-            query: 'nextleveldj1',
-            count: results.length,
-            contentType: 'videos',
-            videos: results
-        });
-    } catch (error) {
-        console.error('[CHANNEL] Error:', error.message);
-        res.status(500).json({ error: error.message || 'Failed to get channel videos' });
-    }
-});
-
-// List all shorts from channel
-app.post('/api/channel-shorts', async (req, res) => {
-    const { limit = 100 } = req.body;
-
-    try {
-        const results = await getChannelContent('shorts', limit);
-        res.json({
-            query: 'nextleveldj1',
-            count: results.length,
-            contentType: 'shorts',
-            videos: results
-        });
-    } catch (error) {
-        console.error('[CHANNEL] Error:', error.message);
-        res.status(500).json({ error: error.message || 'Failed to get channel shorts' });
-    }
-});
-
-// List all lives/streams from channel
-app.post('/api/channel-lives', async (req, res) => {
-    const { limit = 100 } = req.body;
-
-    try {
-        const results = await getChannelContent('lives', limit);
-        res.json({
-            query: 'nextleveldj1',
-            count: results.length,
-            contentType: 'lives',
-            videos: results
-        });
-    } catch (error) {
-        console.error('[CHANNEL] Error:', error.message);
-        res.status(500).json({ error: error.message || 'Failed to get channel lives' });
+        console.error('[YOUTUBE] Error:', error.message);
+        res.status(500).json({ error: error.message || 'Busca falhou' });
     }
 });
 
@@ -489,109 +448,6 @@ async function getInstagramProfile(username, contentType = 'posts', limit = 50) 
     });
 }
 
-// Get content from nextleveldj1 channel by type (videos, shorts, streams)
-async function getChannelContent(contentType = 'videos', limit = 100) {
-    return new Promise((resolve, reject) => {
-        const typeMap = {
-            'videos': 'videos',
-            'shorts': 'shorts',
-            'lives': 'streams'
-        };
-        const urlType = typeMap[contentType] || 'videos';
-        const channelUrl = `https://www.youtube.com/@nextleveldj1/${urlType}`;
-
-        console.log(`[CHANNEL] Fetching ${contentType} from nextleveldj1 (limit: ${limit})`);
-
-        const ytdlp = spawn('yt-dlp', [
-            '--dump-json',
-            '--no-download',
-            '--no-warnings',
-            '--ignore-errors',
-            '--extractor-args', 'youtube:lang=pt',
-            '--playlist-end', String(limit),
-            channelUrl
-        ]);
-
-        let stdout = '';
-        let stderr = '';
-
-        const timeout = setTimeout(() => {
-            ytdlp.kill('SIGTERM');
-            reject(new Error('Channel fetch timeout'));
-        }, 300000); // 5 minutes for full metadata fetch
-
-        ytdlp.stdout.on('data', (data) => {
-            stdout += data.toString();
-        });
-
-        ytdlp.stderr.on('data', (data) => {
-            stderr += data.toString();
-        });
-
-        ytdlp.on('close', (code) => {
-            clearTimeout(timeout);
-
-            if (code !== 0 && stdout.length === 0) {
-                reject(new Error(stderr || 'Failed to fetch channel'));
-                return;
-            }
-
-            try {
-                const lines = stdout.trim().split('\n').filter(line => line.trim());
-                const videos = [];
-
-                for (const line of lines) {
-                    try {
-                        const info = JSON.parse(line);
-                        videos.push({
-                            id: info.id,
-                            url: info.url || `https://www.youtube.com/watch?v=${info.id}`,
-                            title: info.title || 'Unknown Title',
-                            channel: info.channel || info.uploader || 'nextleveldj1',
-                            duration: info.duration || 0,
-                            views: info.view_count || 0,
-                            thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
-                            uploadDate: info.upload_date || '',
-                            platform: 'youtube',
-                            contentType: contentType
-                        });
-                    } catch (parseError) {
-                        // Skip invalid lines
-                    }
-                }
-
-                console.log(`[CHANNEL] Found ${videos.length} ${contentType} from nextleveldj1`);
-                resolve(videos);
-            } catch (error) {
-                reject(new Error('Failed to parse channel content'));
-            }
-        });
-
-        ytdlp.on('error', (err) => {
-            clearTimeout(timeout);
-            reject(err);
-        });
-    });
-}
-
-// Wrapper for backward compatibility
-async function getChannelVideos(limit = 100) {
-    return getChannelContent('videos', limit);
-}
-
-// Search within channel by keyword (filters locally)
-async function searchChannelByKeyword(keyword, limit = 100) {
-    const allVideos = await getChannelVideos(500); // Get more to filter
-    const keywordLower = keyword.toLowerCase();
-
-    const filtered = allVideos.filter(video =>
-        video.title.toLowerCase().includes(keywordLower)
-    );
-
-    console.log(`[CHANNEL] Filtered ${filtered.length} videos matching "${keyword}"`);
-    return filtered.slice(0, limit);
-}
-
 // Endpoint to validate URLs and get video info
 app.post('/api/validate', async (req, res) => {
     const { urls } = req.body;
@@ -643,6 +499,14 @@ function formatViews(views) {
     return views.toString();
 }
 
+// Detect platform from URL
+function getPlatformPrefix(url) {
+    if (url.includes('tiktok.com')) return 'TT';
+    if (url.includes('instagram.com')) return 'IG';
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'YT';
+    return '';
+}
+
 // Direct download endpoint - downloads video and streams to browser
 app.get('/api/download-file', async (req, res) => {
     const { url, quality, prefix, title, views } = req.query;
@@ -654,20 +518,21 @@ app.get('/api/download-file', async (req, res) => {
     const format = QUALITY_FORMATS[quality] || QUALITY_FORMATS['best'];
     const isAudioOnly = quality === 'audio';
 
-    // Create filename with views
+    // Create filename with views and platform prefix
     const safeTitle = sanitizeFilename(title || 'video');
     const viewsFormatted = views ? formatViews(parseInt(views)) : '';
     const ext = isAudioOnly ? 'mp3' : 'mp4';
+    const platformPrefix = getPlatformPrefix(url);
 
     let filename;
     if (prefix && viewsFormatted) {
-        filename = `${prefix} - ${viewsFormatted} - ${safeTitle}.${ext}`;
+        filename = `${platformPrefix} - ${prefix} - ${viewsFormatted} - ${safeTitle}.${ext}`;
     } else if (prefix) {
-        filename = `${prefix} - ${safeTitle}.${ext}`;
+        filename = `${platformPrefix} - ${prefix} - ${safeTitle}.${ext}`;
     } else if (viewsFormatted) {
-        filename = `${viewsFormatted} - ${safeTitle}.${ext}`;
+        filename = `${platformPrefix} - ${viewsFormatted} - ${safeTitle}.${ext}`;
     } else {
-        filename = `${safeTitle}.${ext}`;
+        filename = `${platformPrefix} - ${safeTitle}.${ext}`;
     }
 
     // Temporary file path
@@ -679,9 +544,14 @@ app.get('/api/download-file', async (req, res) => {
         '--no-warnings'
     ];
 
-    // Add cookies for TikTok
-    if (url.includes('tiktok.com')) {
+    // Add cookies for TikTok and Instagram
+    if (url.includes('tiktok.com') || url.includes('instagram.com')) {
         args.push('--cookies-from-browser', 'chrome');
+    }
+
+    // Force compatible format for Instagram (H.264/AAC)
+    if (url.includes('instagram.com') && !isAudioOnly) {
+        args.push('--recode-video', 'mp4');
     }
 
     if (isAudioOnly) {
